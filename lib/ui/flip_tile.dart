@@ -190,17 +190,15 @@ class _TileFace extends StatelessWidget {
           value,
           maxLines: 1,
           textScaler: TextScaler.noScaling,
-          textHeightBehavior: const TextHeightBehavior(
-            applyHeightToFirstAscent: false,
-            applyHeightToLastDescent: false,
-          ),
           style: TextStyle(
             fontFamily: 'Helvetica Neue',
             fontFamilyFallback: const <String>['Arial'],
             fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
             fontSize: height,
             fontWeight: FontWeight.w400,
-            height: 1,
+            height: .78,
+            leadingDistribution: TextLeadingDistribution.even,
+            decoration: TextDecoration.none,
             letterSpacing: -height * .035,
             color: const Color(0xFF232627),
             shadows: const <Shadow>[

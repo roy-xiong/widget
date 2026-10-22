@@ -53,7 +53,10 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: ThemeData(fontFamily: 'Helvetica Neue'),
-          home: RepaintBoundary(key: key, child: child),
+          home: Material(
+            type: MaterialType.transparency,
+            child: RepaintBoundary(key: key, child: child),
+          ),
         ),
       );
       await tester.pump();

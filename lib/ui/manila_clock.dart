@@ -52,6 +52,8 @@ class _ManilaClockState extends State<ManilaClock> {
     final WeatherSnapshot? weather = widget.weather;
     const TextStyle label = TextStyle(
       fontFamily: 'Helvetica Neue',
+      fontFamilyFallback: <String>['PingFang SC', 'Heiti SC'],
+      decoration: TextDecoration.none,
       fontSize: 12,
       color: Colors.white,
       height: 1.15,
