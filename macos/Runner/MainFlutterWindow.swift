@@ -137,7 +137,7 @@ class MainFlutterWindow: NSWindow {
     level = pinned ? .floating : .normal
     pinItem?.state = pinned ? .on : .off
     let rawScale = (settings["scale"] as? NSNumber)?.doubleValue ?? 1
-    let scale = rawScale.isFinite ? min(1.6, max(0.7, rawScale)) : 1
+    let scale = rawScale.isFinite ? min(1.6, max(0.2, rawScale)) : 1
     let manila = settings["style"] as? String == "manila"
     glassView.isHidden = editingSettings || !manila || glassView.frame.isEmpty
     let desired = editingSettings ? NSSize(width: 420, height: 620) :

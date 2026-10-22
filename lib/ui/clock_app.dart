@@ -54,12 +54,133 @@ class _ClockHome extends StatefulWidget {
 
 class _ClockHomeState extends State<_ClockHome> {
   bool _hovered = false;
+
   @override
   Widget build(BuildContext context) => ListenableBuilder(
     listenable: widget.controller,
     builder: (BuildContext context, Widget? child) {
       final ClockController vm = widget.controller;
       final bool desktop = vm.window.supported;
+      final bool compact = desktop && MediaQuery.sizeOf(context).width < 240;
+      final double scale = desktop ? vm.settings.scale : 1;
+      final Widget clock = GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onDoubleTap: desktop
+            ? () => unawaited(vm.setShowingSettings(true))
+            : null,
+        onPanStart: desktop ? (_) => unawaited(vm.drag('begin')) : null,
+        onPanUpdate: desktop ? (_) => unawaited(vm.drag('update')) : null,
+        onPanEnd: desktop ? (_) => unawaited(vm.drag('end')) : null,
+        onPanCancel: desktop ? () => unawaited(vm.drag('end')) : null,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            12 * scale,
+            desktop ? 35 * scale : 60,
+            12 * scale,
+            desktop ? 20 * scale : 40,
+          ),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 620, maxHeight: 620),
+              child: ValueListenableBuilder<DateTime>(
+                valueListenable: vm.time,
+                builder:
+                    (BuildContext context, DateTime instant, Widget? child) =>
+                        TickerMode(
+                          enabled: vm.active,
+                          child: vm.settings.style == ClockStyle.mechanical
+                              ? AspectRatio(
+                                  aspectRatio: 1,
+                                  child: FittedBox(
+                                    child: SizedBox(
+                                      width: 360,
+                                      height: 360,
+                                      child: ClockDial(
+                                        displayTime: instant,
+                                        utcTime: instant.toUtc(),
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              : ManilaClock(
+                                  time: instant,
+                                  city: vm.settings.city.name,
+                                  weather: vm.snapshot,
+                                  loading: vm.loadingWeather,
+                                  error: vm.weatherError,
+                                  onGlassRect: (Rect rect) =>
+                                      unawaited(vm.window.updateGlass(rect)),
+                                  refresh: () => unawaited(vm.refreshWeather()),
+                                ),
+                        ),
+              ),
+            ),
+          ),
+        ),
+      );
+      final Widget toolbar = compact
+          ? _button(
+              '设置',
+              Icons.tune_rounded,
+              () => unawaited(vm.setShowingSettings(true)),
+              compact: true,
+            )
+          : Row(
+              children: <Widget>[
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    vm.settings.style == ClockStyle.mechanical
+                        ? '机械月相'
+                        : 'Manila 天气',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFFDDD7C5),
+                    ),
+                  ),
+                ),
+                _button(
+                  '切换表盘',
+                  Icons.swap_horiz_rounded,
+                  () => unawaited(
+                    vm.update(
+                      vm.settings.copyWith(
+                        style: vm.settings.style == ClockStyle.mechanical
+                            ? ClockStyle.manila
+                            : ClockStyle.mechanical,
+                      ),
+                    ),
+                  ),
+                ),
+                if (desktop)
+                  _button(
+                    vm.settings.alwaysOnTop ? '取消置顶' : '始终置顶',
+                    vm.settings.alwaysOnTop
+                        ? Icons.push_pin
+                        : Icons.push_pin_outlined,
+                    () => unawaited(
+                      vm.update(
+                        vm.settings.copyWith(
+                          alwaysOnTop: !vm.settings.alwaysOnTop,
+                        ),
+                      ),
+                    ),
+                  ),
+                _button(
+                  '设置',
+                  Icons.tune_rounded,
+                  () => unawaited(vm.setShowingSettings(true)),
+                ),
+                if (desktop)
+                  _button(
+                    '退出时钟',
+                    Icons.close_rounded,
+                    () => unawaited(vm.window.quit()),
+                  ),
+              ],
+            );
       final Widget content = vm.showingSettings
           ? SettingsView(controller: vm)
           : MouseRegion(
@@ -67,77 +188,11 @@ class _ClockHomeState extends State<_ClockHome> {
               onExit: (_) => setState(() => _hovered = false),
               child: Stack(
                 children: <Widget>[
-                  Positioned.fill(
-                    child: GestureDetector(
-                      behavior: HitTestBehavior.opaque,
-                      onPanStart: desktop
-                          ? (_) => unawaited(vm.drag('begin'))
-                          : null,
-                      onPanUpdate: desktop
-                          ? (_) => unawaited(vm.drag('update'))
-                          : null,
-                      onPanEnd: desktop
-                          ? (_) => unawaited(vm.drag('end'))
-                          : null,
-                      onPanCancel: desktop
-                          ? () => unawaited(vm.drag('end'))
-                          : null,
-                      child: Padding(
-                        padding: EdgeInsets.fromLTRB(
-                          12,
-                          desktop ? 35 : 60,
-                          12,
-                          desktop ? 20 : 40,
-                        ),
-                        child: Center(
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(
-                              maxWidth: 620,
-                              maxHeight: 620,
-                            ),
-                            child: ValueListenableBuilder<DateTime>(
-                              valueListenable: vm.time,
-                              builder:
-                                  (
-                                    BuildContext context,
-                                    DateTime instant,
-                                    Widget? child,
-                                  ) => TickerMode(
-                                    enabled: vm.active,
-                                    child:
-                                        vm.settings.style ==
-                                            ClockStyle.mechanical
-                                        ? AspectRatio(
-                                            aspectRatio: 1,
-                                            child: ClockDial(
-                                              displayTime: instant,
-                                              utcTime: instant.toUtc(),
-                                            ),
-                                          )
-                                        : ManilaClock(
-                                            time: instant,
-                                            onGlassRect: (Rect rect) =>
-                                                unawaited(
-                                                  vm.window.updateGlass(rect),
-                                                ),
-                                            city: vm.settings.city.name,
-                                            weather: vm.snapshot,
-                                            loading: vm.loadingWeather,
-                                            error: vm.weatherError,
-                                            refresh: () =>
-                                                unawaited(vm.refreshWeather()),
-                                          ),
-                                  ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+                  Positioned.fill(child: clock),
                   Positioned(
                     top: desktop ? 1 : 12,
-                    left: 8,
-                    right: 8,
+                    left: compact ? null : 8,
+                    right: compact ? 1 : 8,
                     child: IgnorePointer(
                       ignoring: desktop && !_hovered,
                       child: AnimatedOpacity(
@@ -148,64 +203,7 @@ class _ClockHomeState extends State<_ClockHome> {
                             color: const Color(0xD9171B22),
                             borderRadius: BorderRadius.circular(18),
                           ),
-                          child: Row(
-                            children: <Widget>[
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  vm.settings.style == ClockStyle.mechanical
-                                      ? '机械月相'
-                                      : 'Manila 天气',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 12,
-                                    color: Color(0xFFDDD7C5),
-                                  ),
-                                ),
-                              ),
-                              _button(
-                                '切换表盘',
-                                Icons.swap_horiz_rounded,
-                                () => unawaited(
-                                  vm.update(
-                                    vm.settings.copyWith(
-                                      style:
-                                          vm.settings.style ==
-                                              ClockStyle.mechanical
-                                          ? ClockStyle.manila
-                                          : ClockStyle.mechanical,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              if (desktop)
-                                _button(
-                                  vm.settings.alwaysOnTop ? '取消置顶' : '始终置顶',
-                                  vm.settings.alwaysOnTop
-                                      ? Icons.push_pin
-                                      : Icons.push_pin_outlined,
-                                  () => unawaited(
-                                    vm.update(
-                                      vm.settings.copyWith(
-                                        alwaysOnTop: !vm.settings.alwaysOnTop,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              _button(
-                                '设置',
-                                Icons.tune_rounded,
-                                () => unawaited(vm.setShowingSettings(true)),
-                              ),
-                              if (desktop)
-                                _button(
-                                  '退出时钟',
-                                  Icons.close_rounded,
-                                  () => unawaited(vm.window.quit()),
-                                ),
-                            ],
-                          ),
+                          child: toolbar,
                         ),
                       ),
                     ),
@@ -234,13 +232,21 @@ class _ClockHomeState extends State<_ClockHome> {
     },
   );
 
-  Widget _button(String label, IconData icon, VoidCallback action) =>
-      IconButton(
-        tooltip: label,
-        onPressed: action,
-        visualDensity: VisualDensity.compact,
-        constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
-        padding: const EdgeInsets.all(6),
-        icon: Icon(icon, size: 16, color: const Color(0xFFD6D7DC)),
-      );
+  /// 小窗口保留固定可点击的设置入口；双击表盘和菜单栏入口也可恢复正常大小。
+  Widget _button(
+    String label,
+    IconData icon,
+    VoidCallback action, {
+    bool compact = false,
+  }) => IconButton(
+    tooltip: label,
+    onPressed: action,
+    visualDensity: VisualDensity.compact,
+    constraints: BoxConstraints(
+      minWidth: compact ? 28 : 34,
+      minHeight: compact ? 28 : 34,
+    ),
+    padding: EdgeInsets.all(compact ? 4 : 6),
+    icon: Icon(icon, size: compact ? 14 : 16, color: const Color(0xFFD6D7DC)),
+  );
 }

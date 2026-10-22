@@ -73,7 +73,7 @@ class ClockSettings {
     style: style ?? this.style,
     alwaysOnTop: alwaysOnTop ?? this.alwaysOnTop,
     snapToEdge: snapToEdge ?? this.snapToEdge,
-    scale: (scale ?? this.scale).clamp(.7, 1.6),
+    scale: (scale ?? this.scale).clamp(.2, 1.6),
     city: city ?? this.city,
   );
   Map<String, Object> toJson() => <String, Object>{
@@ -96,7 +96,7 @@ class ClockSettings {
           ? value['snapToEdge'] as bool
           : true,
       scale: scale is num && scale.isFinite
-          ? scale.toDouble().clamp(.7, 1.6)
+          ? scale.toDouble().clamp(.2, 1.6)
           : 1,
       city: WeatherCity.fromJson(value['city']) ?? WeatherCity.beijing,
     );

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/widgets.dart' show Rect;
 import 'package:desktop_clock/data/preferences_repository.dart';
 import 'package:desktop_clock/data/weather_repository.dart';
 import 'package:desktop_clock/domain/clock_settings.dart';
@@ -53,6 +54,22 @@ class FakeWindow extends WindowService {
   bool get supported => false;
 }
 
+/// 桌面布局测试使用无平台通道的窗口替身，真实 AppKit 行为由云端及运行检查覆盖。
+class FakeDesktopWindow extends FakeWindow {
+  @override
+  bool get supported => true;
+  @override
+  void attach() {}
+  @override
+  Future<void> configure(ClockSettings settings) async {}
+  @override
+  Future<void> settingsVisible(bool visible) async {}
+  @override
+  Future<void> updateGlass(Rect rect) async {}
+  @override
+  void dispose() {}
+}
+
 Future<void> settleAsync() => Future<void>.delayed(Duration.zero);
 
 void main() {
@@ -65,6 +82,8 @@ void main() {
     expect(settings.scale, 1);
     expect(settings.city.key, WeatherCity.beijing.key);
     expect(const ClockSettings().copyWith(scale: 100).scale, 1.6);
+    expect(const ClockSettings().copyWith(scale: .01).scale, .2);
+    expect(ClockSettings.fromJson(<String, dynamic>{'scale': .1}).scale, .2);
   });
   test('城市切换后较晚完成的旧响应不能覆盖新城市', () async {
     final PendingWeather weather = PendingWeather();

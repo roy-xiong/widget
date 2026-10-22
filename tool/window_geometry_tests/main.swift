@@ -23,4 +23,8 @@ for index in 0..<1000 {
   let result = WindowGeometry.constrained(frame, to: leftScreen, snap: index % 2 == 0)
   precondition(leftScreen.contains(result))
 }
-print("Window geometry: 1010 checks passed")
+let tiny = CGRect(x: 8, y: 48, width: 72, height: 82)
+let snappedTiny = WindowGeometry.constrained(tiny, to: screen, snap: true)
+precondition(snappedTiny.origin == CGPoint(x: 0, y: 40))
+precondition(snappedTiny.size == tiny.size)
+print("Window geometry: 1012 checks passed")

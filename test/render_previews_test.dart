@@ -5,9 +5,9 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:desktop_clock/domain/weather_snapshot.dart';
-import 'package:desktop_clock/ui/clock_dial.dart' show MoonPhase;
+import 'package:desktop_clock/ui/clock_dial.dart'
+    show MoonPhase, ClockDialPainter;
 import 'package:desktop_clock/ui/manila_clock.dart';
-import '../tool/preview/mechanical_concept.dart';
 
 /// 只在专用云端渲染任务执行，导出真正的 Flutter 画布，而不修改正式机械表盘。
 void main() {
@@ -85,7 +85,7 @@ void main() {
           width: 360,
           height: 360,
           child: CustomPaint(
-            painter: MechanicalConceptPainter(
+            painter: ClockDialPainter(
               time: instant,
               moon: MoonPhase.atUtc(instant.toUtc()),
             ),

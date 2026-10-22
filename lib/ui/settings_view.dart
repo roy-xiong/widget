@@ -129,9 +129,9 @@ class _SettingsViewState extends State<SettingsView> {
                   Text('时钟大小  ${(settings.scale * 100).round()}%'),
                   Slider(
                     value: settings.scale,
-                    min: .7,
+                    min: .2,
                     max: 1.6,
-                    divisions: 18,
+                    divisions: 28,
                     label: '${(settings.scale * 100).round()}%',
                     onChanged: (double value) =>
                         unawaited(vm.update(settings.copyWith(scale: value))),
