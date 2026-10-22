@@ -116,6 +116,10 @@ class _ClockHomeState extends State<_ClockHome> {
                                           )
                                         : ManilaClock(
                                             time: instant,
+                                            onGlassRect: (Rect rect) =>
+                                                unawaited(
+                                                  vm.window.updateGlass(rect),
+                                                ),
                                             city: vm.settings.city.name,
                                             weather: vm.snapshot,
                                             loading: vm.loadingWeather,

@@ -57,17 +57,17 @@ class _FlipTileState extends State<FlipTile>
           );
           return DecoratedBox(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(9),
+              borderRadius: BorderRadius.circular(5),
               boxShadow: const <BoxShadow>[
                 BoxShadow(
-                  color: Color(0xAA000000),
-                  blurRadius: 9,
-                  offset: Offset(0, 5),
+                  color: Color(0x70000000),
+                  blurRadius: 5,
+                  offset: Offset(0, 3),
                 ),
               ],
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(9),
+              borderRadius: BorderRadius.circular(5),
               child: AnimatedBuilder(
                 animation: _animation,
                 builder: (BuildContext context, Widget? child) {
@@ -115,20 +115,20 @@ class _FlipTileState extends State<FlipTile>
                       Positioned(
                         left: 0,
                         right: 0,
-                        top: height / 2 - 1,
+                        top: height / 2 - .45,
                         child: Container(
-                          height: 2,
-                          color: const Color(0x90000000),
+                          height: .9,
+                          color: const Color(0x60000000),
                         ),
                       ),
                       for (final bool left in <bool>[true, false])
                         Positioned(
                           left: left ? 0 : null,
                           right: left ? null : 0,
-                          top: height / 2 - 5,
+                          top: height / 2 - 3.5,
                           child: Container(
-                            width: 5,
-                            height: 10,
+                            width: 2.5,
+                            height: 7,
                             decoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(2),
                               gradient: const LinearGradient(
@@ -153,7 +153,7 @@ class _FlipTileState extends State<FlipTile>
   );
 }
 
-/// 完整牌面的渐变与数字由上下两个裁切面共用，翻转过程中保持同一字号与基线。
+/// 瘦长、等宽数字配合压薄的折缝；上下半页共用同一牌面，翻转时基线保持一致。
 class _TileFace extends StatelessWidget {
   const _TileFace({
     required this.value,
@@ -166,38 +166,45 @@ class _TileFace extends StatelessWidget {
   Widget build(BuildContext context) => Container(
     width: width,
     height: height,
-    decoration: const BoxDecoration(
-      gradient: LinearGradient(
+    decoration: BoxDecoration(
+      border: Border.all(color: const Color(0xFFEFF1ED), width: .8),
+      gradient: const LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: <Color>[
-          Color(0xFFF4F3EF),
-          Color(0xFFDEDED9),
-          Color(0xFFFBFBF8),
-          Color(0xFFEAE9E4),
+          Color(0xFFF7F8F4),
+          Color(0xFFDDE1DB),
+          Color(0xFFFAFBF7),
+          Color(0xFFE8ECE7),
         ],
-        stops: <double>[0, .49, .51, 1],
+        stops: <double>[0, .498, .502, 1],
       ),
     ),
     alignment: Alignment.center,
-    child: Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 3),
+    child: SizedBox(
+      width: width * .85,
+      height: height * .86,
       child: FittedBox(
-        fit: BoxFit.contain,
+        fit: BoxFit.fill,
         child: Text(
           value,
           maxLines: 1,
           textScaler: TextScaler.noScaling,
+          textHeightBehavior: const TextHeightBehavior(
+            applyHeightToFirstAscent: false,
+            applyHeightToLastDescent: false,
+          ),
           style: TextStyle(
             fontFamily: 'Helvetica Neue',
             fontFamilyFallback: const <String>['Arial'],
-            fontSize: height * .80,
-            fontWeight: FontWeight.w700,
-            height: 1.10,
-            letterSpacing: -height * .06,
-            color: const Color(0xFF161719),
+            fontFeatures: const <FontFeature>[FontFeature.tabularFigures()],
+            fontSize: height,
+            fontWeight: FontWeight.w400,
+            height: 1,
+            letterSpacing: -height * .035,
+            color: const Color(0xFF232627),
             shadows: const <Shadow>[
-              Shadow(color: Colors.white, offset: Offset(0, 1)),
+              Shadow(color: Color(0xA0FFFFFF), offset: Offset(0, 1)),
             ],
           ),
         ),

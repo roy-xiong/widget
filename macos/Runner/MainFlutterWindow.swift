@@ -15,6 +15,7 @@ class MainFlutterWindow: NSWindow {
   private var dragMouse: NSPoint?
   private var dragOrigin: NSPoint?
   private var snapping = true
+  private let glassView = NSVisualEffectView(frame: .zero)
 
   override var canBecomeKey: Bool { true }
   override var canBecomeMain: Bool { true }
@@ -32,7 +33,25 @@ class MainFlutterWindow: NSWindow {
     title = "桌面时钟"
     let controller = FlutterViewController()
     controller.backgroundColor = .clear
-    contentViewController = controller
+    // 原生玻璃与 Flutter 是兄弟视图，玻璃才能透过透明画布采样窗口背后的桌面。
+    let host = NSViewController()
+    host.view = NSView(frame: NSRect(origin: .zero, size: frame.size))
+    host.addChild(controller)
+    glassView.blendingMode = .behindWindow
+    glassView.material = .hudWindow
+    glassView.state = .active
+    glassView.appearance = NSAppearance(named: .vibrantDark)
+    glassView.alphaValue = 0.62
+    glassView.wantsLayer = true
+    glassView.layer?.masksToBounds = true
+    glassView.isHidden = true
+    host.view.addSubview(glassView)
+    controller.view.frame = host.view.bounds
+    controller.view.autoresizingMask = [.width, .height]
+    host.view.addSubview(controller.view)
+    let savedFrame = frame
+    contentViewController = host
+    setFrame(savedFrame, display: true)
     RegisterGeneratedPlugins(registry: controller)
 
     let messenger = controller.engine.binaryMessenger
@@ -92,6 +111,17 @@ class MainFlutterWindow: NSWindow {
         setFrameOrigin(NSPoint(x: origin.x + current.x - mouse.x, y: origin.y + current.y - mouse.y))
       } else if phase == "end" { dragMouse = nil; dragOrigin = nil; constrainToScreen(snap: snapping); saveOrigin() }
       result(nil)
+    case "glassRect":
+      guard let args = call.arguments as? [String: NSNumber],
+            let left = args["left"]?.doubleValue, let top = args["top"]?.doubleValue,
+            let width = args["width"]?.doubleValue, let height = args["height"]?.doubleValue,
+            [left, top, width, height].allSatisfy({ $0.isFinite }), width > 0, height > 0,
+            let host = contentView else { result(nil); return }
+      let region = NSRect(x: left, y: host.bounds.height - top - height, width: width, height: height).intersection(host.bounds)
+      glassView.frame = region
+      glassView.layer?.cornerRadius = 9 * region.width / 360
+      glassView.isHidden = editingSettings || settings["style"] as? String != "manila"
+      result(nil)
     case "quit": result(nil); NSApp.terminate(nil)
     default: result(FlutterMethodNotImplemented)
     }
@@ -106,6 +136,7 @@ class MainFlutterWindow: NSWindow {
     let rawScale = (settings["scale"] as? NSNumber)?.doubleValue ?? 1
     let scale = rawScale.isFinite ? min(1.6, max(0.7, rawScale)) : 1
     let manila = settings["style"] as? String == "manila"
+    glassView.isHidden = editingSettings || !manila || glassView.frame.isEmpty
     let desired = editingSettings ? NSSize(width: 420, height: 620) :
       NSSize(width: (manila ? 380 : 360) * scale, height: (manila ? 355 : 410) * scale)
     let visible = selectedFrame()

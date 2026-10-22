@@ -35,6 +35,21 @@ class WindowService {
     if (supported) await _channel.invokeMethod<void>('drag', phase);
   }
 
+  /// 仅在玻璃区域改变时由视图报告；原生根据窗口尺寸将坐标转换到 AppKit。
+  Future<void> updateGlass(Rect rect) async {
+    if (!supported) return;
+    try {
+      await _channel.invokeMethod<void>('glassRect', <String, double>{
+        'left': rect.left,
+        'top': rect.top,
+        'width': rect.width,
+        'height': rect.height,
+      });
+    } on PlatformException {
+      /* 窗口关闭期间忽略已失效的装饰层更新。 */
+    }
+  }
+
   Future<void> quit() async {
     if (supported) await _channel.invokeMethod<void>('quit');
   }

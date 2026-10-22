@@ -4,10 +4,35 @@ import 'package:desktop_clock/domain/clock_settings.dart';
 import 'package:desktop_clock/ui/clock_app.dart';
 import 'package:desktop_clock/ui/clock_controller.dart';
 import 'package:desktop_clock/ui/flip_tile.dart';
+import 'package:desktop_clock/ui/manila_clock.dart';
 import 'controller_test.dart'
     show MemoryPreferences, PendingWeather, FakeWindow;
 
 void main() {
+  testWidgets('玻璃区域报告缩放后的窗口坐标', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(720, 500);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final List<Rect> regions = <Rect>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: ManilaClock(
+          time: DateTime(2026, 10, 22, 10, 8),
+          city: '成都',
+          weather: null,
+          loading: false,
+          error: null,
+          refresh: () {},
+          onGlassRect: regions.add,
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(regions, <Rect>[const Rect.fromLTWH(0, 32, 720, 428)]);
+    expect(tester.takeException(), isNull);
+    await tester.pumpWidget(const SizedBox());
+  });
   for (final Size size in <Size>[
     const Size(266, 248),
     const Size(380, 355),

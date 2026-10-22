@@ -5,7 +5,7 @@
 ## 功能
 
 - 机械月相：逐字节复用 `dianbo/lib/clock_dial.dart`，保留罗马刻度、蓝钢指针、星期日历、月相和每秒 8 次步进。
-- Manila：参考早期 HTC TouchFLO / Sense 白色双翻页牌与深色天气底座；只显示小时、分钟，时间变化时三维翻页。
+- Manila：参考早期 HTC TouchFLO / Sense 瘦长双翻页牌与半透明玻璃底座；城市在左、天气图案居中、日期温度在右。macOS 使用原生玻璃采样桌面背景。只显示小时、分钟，时间变化时三维翻页。
 - macOS：透明无边框窗口、置顶开关、拖动、18pt 边缘吸附、多显示器和位置恢复、70%～160% 大小调节、菜单栏入口。
 - 天气：手动选择/搜索城市，约每 15 分钟刷新；离线保留上次数据并显示更新状态。初始城市为北京，可在设置中更改。
 - iOS：复用两种时钟和天气设置。**持续翻页的桌面小组件暂缓**；本版没有 WidgetKit 扩展，也不提供跨 App 悬浮窗口。
@@ -34,6 +34,7 @@ Apple 两端不使用 NDK。`toolchain.json` 记录 BBK Android 基线：NDK 27.
 - `lib/data/`：原生偏好存储、Open-Meteo 请求与校验。
 - `macos/Runner/MainFlutterWindow.swift`：主线程窗口状态、菜单栏、拖动与通道。
 - `macos/Runner/WindowGeometry.swift`：独立且可验证的多屏夹取和吸边算法。
+- `tool/preview/mechanical_concept.dart`：小月相与陀飞轮的独立审阅图，尚未接入正式机械表盘。`Render clock previews` 流水线负责导出 PNG。
 
 天气时间与时区：表盘显示**本机系统时间和系统时区**；所选城市只影响天气，不会改变时钟时区。天气信息来自模型估计，数据源为 [Open-Meteo](https://open-meteo.com/)（免费非商业服务，按要求保留归属）。
 

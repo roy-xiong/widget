@@ -1,0 +1,30 @@
+name: Render clock previews
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['tool/preview/**', 'test/render_previews_test.dart', 'lib/ui/manila_clock.dart', 'lib/ui/flip_tile.dart', '.github/workflows/render-previews.yml']
+permissions:
+  contents: write
+jobs:
+  render:
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.4'
+          channel: stable
+          cache: true
+      - run: flutter pub get --enforce-lockfile
+      - run: flutter test --no-pub test/render_previews_test.dart --dart-define=RENDER_PREVIEWS=true --reporter expanded
+      - uses: actions/upload-artifact@v4
+        with:
+          name: clock-design-previews
+          path: build/previews/
+          if-no-files-found: error
+      - name: Publish review images
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "design-$GITHUB_RUN_ID" build/previews/*.png --target "$GITHUB_SHA" --prerelease --title '时钟外观审阅图' --notes '机械表为独立布局预览，尚未接入正式表盘。马尼拉为已修改的玻璃天气界面。'

@@ -1,11 +1,12 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import '../domain/weather_snapshot.dart';
 import 'flip_tile.dart';
 
-/// TouchFLO / Sense 早期时钟布局：两块白色翻页牌叠在深色天气底座上。
-/// 面板以固定设计坐标绘制后等比缩放，窄窗口和横屏均保持牌面比例。
-class ManilaClock extends StatelessWidget {
+/// 按早期 HTC Sense 参考排布：瘦长翻页牌覆盖玻璃底座，天气图案位于底部中央。
+/// 玻璃区域的实际窗口坐标单独报告给 AppKit，使桌面背景也能参与原生模糊。
+class ManilaClock extends StatefulWidget {
   const ManilaClock({
     required this.time,
     required this.city,
@@ -13,6 +14,7 @@ class ManilaClock extends StatelessWidget {
     required this.loading,
     required this.error,
     required this.refresh,
+    this.onGlassRect,
     super.key,
   });
   final DateTime time;
@@ -21,181 +23,244 @@ class ManilaClock extends StatelessWidget {
   final bool loading;
   final String? error;
   final VoidCallback refresh;
+  final ValueChanged<Rect>? onGlassRect;
   @override
-  Widget build(BuildContext context) => FittedBox(
-    fit: BoxFit.contain,
-    child: SizedBox(
-      width: 356,
-      height: 288,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: <Widget>[
-          Positioned(
-            left: 0,
-            right: 0,
-            top: 76,
-            bottom: 0,
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(13),
-                border: Border.all(color: const Color(0xFF53555A)),
-                gradient: const LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: <Color>[
-                    Color(0xFF3F4248),
-                    Color(0xFF17191E),
-                    Color(0xFF24262C),
-                  ],
-                ),
-                boxShadow: const <BoxShadow>[
-                  BoxShadow(
-                    color: Color(0x88000000),
-                    blurRadius: 18,
-                    offset: Offset(0, 8),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Positioned(
-            left: 13,
-            top: 0,
-            width: 159,
-            height: 160,
-            child: FlipTile(
-              key: const ValueKey<String>('hours'),
-              value: time.hour.toString().padLeft(2, '0'),
-            ),
-          ),
-          Positioned(
-            right: 13,
-            top: 0,
-            width: 159,
-            height: 160,
-            child: FlipTile(
-              key: const ValueKey<String>('minutes'),
-              value: time.minute.toString().padLeft(2, '0'),
-            ),
-          ),
-          Positioned(
-            top: 166,
-            left: 20,
-            right: 20,
-            child: Row(
-              children: <Widget>[
-                Expanded(
-                  child: Text(
-                    city,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-                Text(
-                  '${time.month}月${time.day}日 周${'一二三四五六日'[time.weekday - 1]}',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: Color(0xFFC6C9D0),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Positioned(
-            top: 194,
-            left: 18,
-            width: 82,
-            height: 70,
-            child: Semantics(
-              label: weather?.description ?? '天气',
-              image: true,
-              child: CustomPaint(
-                painter: WeatherArtwork(
-                  code: weather?.code ?? 2,
-                  isDay: weather?.isDay ?? true,
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            top: 198,
-            left: 110,
-            right: 18,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  weather == null ? '—°' : '${weather!.temperature.round()}°',
-                  style: const TextStyle(
-                    fontSize: 47,
-                    height: 1.1,
-                    color: Colors.white,
-                    fontWeight: FontWeight.w300,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      const SizedBox(height: 4),
-                      Text(
-                        weather?.description ?? (loading ? '正在获取天气' : '暂无天气'),
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        weather == null
-                            ? '点击下方刷新'
-                            : '高 ${weather!.high?.round() ?? '—'}°  低 ${weather!.low?.round() ?? '—'}°',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFFB8BCC6),
-                        ),
+  State<ManilaClock> createState() => _ManilaClockState();
+}
+
+class _ManilaClockState extends State<ManilaClock> {
+  final GlobalKey _glassKey = GlobalKey();
+  Rect? _reportedRect;
+
+  /// FittedBox 会改变缩放，因此分别转换两端坐标，不能直接把未缩放 size 发给原生。
+  void _reportGlass() {
+    if (!mounted || widget.onGlassRect == null) return;
+    final RenderObject? object = _glassKey.currentContext?.findRenderObject();
+    if (object is! RenderBox || !object.hasSize) return;
+    final Rect rect = Rect.fromPoints(
+      object.localToGlobal(Offset.zero),
+      object.localToGlobal(Offset(object.size.width, object.size.height)),
+    );
+    if (rect == _reportedRect || !rect.isFinite || rect.isEmpty) return;
+    _reportedRect = rect;
+    widget.onGlassRect?.call(rect);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    WidgetsBinding.instance.addPostFrameCallback((_) => _reportGlass());
+    final WeatherSnapshot? weather = widget.weather;
+    const TextStyle label = TextStyle(
+      fontFamily: 'Helvetica Neue',
+      fontSize: 12,
+      color: Colors.white,
+      height: 1.15,
+      shadows: <Shadow>[
+        Shadow(color: Color(0xB0000000), blurRadius: 2, offset: Offset(0, 1)),
+      ],
+    );
+    final String update = weather == null
+        ? '点击刷新天气'
+        : '${weather.isStale(widget.time) ? '上次天气 · ' : ''}${weather.fetchedAt.hour.toString().padLeft(2, '0')}:${weather.fetchedAt.minute.toString().padLeft(2, '0')} 更新 · Open-Meteo';
+    return AspectRatio(
+      aspectRatio: 360 / 250,
+      child: FittedBox(
+        fit: BoxFit.contain,
+        child: SizedBox(
+          width: 360,
+          height: 250,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: <Widget>[
+              Positioned(
+                left: 0,
+                right: 0,
+                top: 16,
+                height: 214,
+                child: Container(
+                  key: _glassKey,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(9),
+                    boxShadow: const <BoxShadow>[
+                      BoxShadow(
+                        color: Color(0x30000000),
+                        blurRadius: 8,
+                        offset: Offset(0, 3),
                       ),
                     ],
                   ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(9),
+                    child: BackdropFilter(
+                      filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(9),
+                          border: Border.all(
+                            color: const Color(0x60FFFFFF),
+                            width: .65,
+                          ),
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: <Color>[
+                              Color(0x45E8F0F4),
+                              Color(0x253C4852),
+                              Color(0x65313A43),
+                            ],
+                            stops: <double>[0, .45, 1],
+                          ),
+                        ),
+                        child: const Stack(
+                          children: <Widget>[
+                            Positioned(
+                              left: 1,
+                              right: 1,
+                              top: 1,
+                              height: 1,
+                              child: ColoredBox(color: Color(0x50FFFFFF)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
-              ],
-            ),
-          ),
-          Positioned(
-            left: 15,
-            right: 15,
-            bottom: 1,
-            height: 29,
-            child: TextButton(
-              onPressed: loading ? null : refresh,
-              style: TextButton.styleFrom(
-                padding: EdgeInsets.zero,
-                foregroundColor: const Color(0xFFA8AEB9),
-                disabledForegroundColor: const Color(0xFFA8AEB9),
               ),
-              child: Text(
-                error ??
-                    (loading
-                        ? '正在更新…'
-                        : weather == null
-                        ? '刷新天气'
-                        : '${weather!.isStale(time) ? '上次天气 · ' : ''}${weather!.fetchedAt.hour.toString().padLeft(2, '0')}:${weather!.fetchedAt.minute.toString().padLeft(2, '0')} 更新 · Open-Meteo'),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 10),
+              Positioned(
+                left: 20,
+                top: 0,
+                width: 142,
+                height: 164,
+                child: FlipTile(
+                  key: const ValueKey<String>('hours'),
+                  value: widget.time.hour.toString().padLeft(2, '0'),
+                ),
               ),
-            ),
+              Positioned(
+                right: 20,
+                top: 0,
+                width: 142,
+                height: 164,
+                child: FlipTile(
+                  key: const ValueKey<String>('minutes'),
+                  value: widget.time.minute.toString().padLeft(2, '0'),
+                ),
+              ),
+              Positioned(
+                left: 124,
+                top: 160,
+                width: 112,
+                height: 80,
+                child: Tooltip(
+                  message: widget.error ?? update,
+                  child: Semantics(
+                    label: weather?.description ?? '暂无天气',
+                    image: true,
+                    child: GestureDetector(
+                      onTap: widget.loading ? null : widget.refresh,
+                      child: CustomPaint(
+                        painter: WeatherArtwork(
+                          code: weather?.code ?? 3,
+                          isDay: weather?.isDay ?? true,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: 12,
+                top: 180,
+                width: 112,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      widget.city,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: label.copyWith(fontSize: 13),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      weather?.description ??
+                          (widget.loading ? '正在更新' : '暂无天气'),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: label,
+                    ),
+                  ],
+                ),
+              ),
+              Positioned(
+                right: 12,
+                top: 177,
+                width: 110,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: <Widget>[
+                    Text(
+                      '周${'一二三四五六日'[widget.time.weekday - 1]}，${widget.time.month}月${widget.time.day}日',
+                      maxLines: 1,
+                      style: label.copyWith(fontSize: 11),
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: <Widget>[
+                        Text(
+                          weather == null
+                              ? '—°'
+                              : '${weather.temperature.round()}°',
+                          style: label.copyWith(
+                            fontSize: 31,
+                            fontWeight: FontWeight.w300,
+                            height: 1,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: <Widget>[
+                            Text(
+                              '高 ${weather?.high?.round() ?? '—'}°',
+                              style: label.copyWith(fontSize: 10),
+                            ),
+                            Text(
+                              '低 ${weather?.low?.round() ?? '—'}°',
+                              style: label.copyWith(fontSize: 10),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              if (widget.error != null || widget.loading)
+                Positioned(
+                  left: 10,
+                  right: 10,
+                  bottom: 0,
+                  child: GestureDetector(
+                    onTap: widget.loading ? null : widget.refresh,
+                    child: Text(
+                      widget.error ?? '正在更新天气…',
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: label.copyWith(fontSize: 9),
+                    ),
+                  ),
+                ),
+            ],
           ),
-        ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 /// 自绘天气插图，不依赖 HTC 图片资源或图片网络请求；仅天气数据变化时重绘。
