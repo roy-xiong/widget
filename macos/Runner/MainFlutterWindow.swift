@@ -118,6 +118,9 @@ class MainFlutterWindow: NSWindow {
             [left, top, width, height].allSatisfy({ $0.isFinite }), width > 0, height > 0,
             let host = contentView else { result(nil); return }
       let region = NSRect(x: left, y: host.bounds.height - top - height, width: width, height: height).intersection(host.bounds)
+      guard !region.isNull, !region.isEmpty else {
+        glassView.isHidden = true; result(nil); return
+      }
       glassView.frame = region
       glassView.layer?.cornerRadius = 9 * region.width / 360
       glassView.isHidden = editingSettings || settings["style"] as? String != "manila"
