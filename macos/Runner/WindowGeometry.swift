@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 
 /**
  * 无窗口依赖的几何计算，CI 可独立验证四边、角落、多屏负坐标和屏幕移除。

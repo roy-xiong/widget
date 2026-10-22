@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 
 let screen = CGRect(x: 0, y: 40, width: 1440, height: 820)
 func check(_ frame: CGRect, _ expected: CGPoint, snap: Bool = true, on screen: CGRect = screen) {
