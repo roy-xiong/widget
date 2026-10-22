@@ -1,0 +1,14 @@
+{
+  "flutter": "3.44.4",
+  "dart": "3.12.2",
+  "bbkAndroidReference": {
+    "ndk": "27.2.12479018",
+    "agp": "9.0.1",
+    "kotlin": "2.3.20",
+    "gradle": "9.1.0",
+    "java": "17",
+    "minSdk": 24
+  },
+  "platforms": ["macos", "ios"],
+  "note": "首版 Apple 两端不使用 Android NDK；记录 BBK 基线供未来 Android 工程沿用。"
+}

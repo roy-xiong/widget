@@ -1,0 +1,5 @@
+// 对外使用中文名称，内部模块名保持稳定，避免中文路径影响 Swift 模块引用。
+PRODUCT_NAME = 桌面时钟
+PRODUCT_MODULE_NAME = desktop_clock
+PRODUCT_BUNDLE_IDENTIFIER = com.xiongjian.widget
+PRODUCT_COPYRIGHT = Copyright © 2026 roy-xiong. All rights reserved.

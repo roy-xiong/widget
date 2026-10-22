@@ -1,0 +1,16 @@
+name: Desktop Clock beta
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 需要打包的平台
+        type: choice
+        default: all
+        options: [all, macos, ios]
+permissions:
+  contents: write
+jobs:
+  build:
+    uses: ./.github/workflows/build.yml
+    with:
+      platform: ${{ inputs.platform }}

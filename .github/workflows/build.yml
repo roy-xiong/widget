@@ -1,0 +1,150 @@
+name: Build Desktop Clock
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 打包平台
+        type: choice
+        default: all
+        options: [all, macos, ios]
+  workflow_call:
+    inputs:
+      platform:
+        type: string
+        default: all
+permissions:
+  contents: read
+concurrency:
+  group: widget-build-${{ github.ref }}-${{ inputs.platform || 'all' }}
+  cancel-in-progress: true
+env:
+  FLUTTER_VERSION: '3.44.4'
+  PUB_HOSTED_URL: https://pub.dev
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    outputs:
+      build_number: ${{ steps.metadata.outputs.build_number }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - name: Generate shared build number
+        id: metadata
+        run: echo "build_number=$((1000 + $(git rev-list --count HEAD)))" >> "$GITHUB_OUTPUT"
+      - run: flutter pub get --enforce-lockfile
+      - run: dart format --output=none --set-exit-if-changed lib test
+      - run: flutter analyze --no-pub
+      - run: flutter test --no-pub --reporter expanded
+  macos:
+    needs: validate
+    if: ${{ github.event_name == 'push' || inputs.platform == 'all' || inputs.platform == 'macos' }}
+    runs-on: macos-15
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get --enforce-lockfile
+      - name: Verify native window geometry
+        run: |
+          mkdir -p build/checks
+          swiftc macos/Runner/WindowGeometry.swift tool/window_geometry_tests/main.swift -o build/checks/window-geometry
+          build/checks/window-geometry
+      - name: Build universal macOS package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/ci-logs
+          {
+            flutter build macos --release --no-pub --build-number=${{ needs.validate.outputs.build_number }}
+            bash tool/package_macos.sh
+          } 2>&1 | tee build/ci-logs/macos.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: widget-macos
+          path: dist/
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: macos-diagnostics
+          path: build/ci-logs/
+          if-no-files-found: ignore
+  ios:
+    needs: validate
+    if: ${{ github.event_name == 'push' || inputs.platform == 'all' || inputs.platform == 'ios' }}
+    runs-on: macos-15
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+      - run: flutter pub get --enforce-lockfile
+      - name: Build unsigned iOS app
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/ci-logs
+          flutter build ios --release --no-codesign --no-pub --build-number=${{ needs.validate.outputs.build_number }} 2>&1 | tee build/ci-logs/ios.log
+          bash tool/package_ios_unsigned.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: widget-ios
+          path: dist/
+          compression-level: 0
+          if-no-files-found: error
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: ios-diagnostics
+          path: build/ci-logs/
+          if-no-files-found: ignore
+  release:
+    needs: [validate, macos, ios]
+    if: >-
+      ${{ always() && !cancelled() && needs.validate.result == 'success' &&
+          contains(fromJSON('["success","skipped"]'), needs.macos.result) &&
+          contains(fromJSON('["success","skipped"]'), needs.ios.result) &&
+          (needs.macos.result == 'success' || needs.ios.result == 'success') }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: widget-*
+          path: dist
+          merge-multiple: true
+      - name: Publish preview packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CLOCK_BUILD: ${{ needs.validate.outputs.build_number }}
+        run: |
+          cat > "$RUNNER_TEMP/release-notes.md" <<'NOTES'
+          机械月相表盘与马尼拉翻页天气时钟。
+
+          - macOS：透明悬浮、置顶开关、拖动吸边、多屏位置恢复、大小与天气城市设置。
+          - iOS：普通时钟 App；动态桌面小组件按计划暂缓。
+          - iOS IPA 未签名，需要自行签名安装；macOS 为 ad-hoc 签名测试包，未公证。
+          - 附 SHA-256 校验文件。Flutter 3.44.4 / Dart 3.12.2。
+          NOTES
+          gh release create "preview-$GITHUB_RUN_ID" dist/* --target "$GITHUB_SHA" --prerelease --title "桌面时钟 1.0.0 · Build $CLOCK_BUILD" --notes-file "$RUNNER_TEMP/release-notes.md"
