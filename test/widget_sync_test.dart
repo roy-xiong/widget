@@ -27,29 +27,34 @@ void main() {
           return null;
         });
     final WidgetSyncService service = WidgetSyncService();
-    addTearDown(() {
+    try {
+      for (final ClockSettings settings in <ClockSettings>[
+        const ClockSettings(),
+        const ClockSettings(moonScale: .5),
+        const ClockSettings(moonScale: .5, calendarScale: 1.5),
+        const ClockSettings(
+          moonScale: .5,
+          calendarScale: 1.5,
+          romanScale: 1.25,
+        ),
+      ]) {
+        await tester.runAsync(() async {
+          // 定时器和 raster.toImage 都在真实异步区运行，不能用真实等待代替推进 FakeAsync。
+          nextPublish = Completer<void>();
+          service.schedule(settings);
+          await nextPublish!.future.timeout(const Duration(seconds: 8));
+        });
+        expect(published, isNotEmpty, reason: '设置必须独立于 PNG 底图缓存提交');
+        expect(published.last['moonScale'], settings.moonScale);
+        expect(published.last['calendarScale'], settings.calendarScale);
+        expect(published.last['romanScale'], settings.romanScale);
+      }
+      expect(published.length, 4);
+    } finally {
       service.dispose();
       debugDefaultTargetPlatformOverride = null;
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, null);
-    });
-    for (final ClockSettings settings in <ClockSettings>[
-      const ClockSettings(),
-      const ClockSettings(moonScale: .5),
-      const ClockSettings(moonScale: .5, calendarScale: 1.5),
-      const ClockSettings(moonScale: .5, calendarScale: 1.5, romanScale: 1.25),
-    ]) {
-      await tester.runAsync(() async {
-        // 定时器和 raster.toImage 都在真实异步区运行，不能用真实等待代替推进 FakeAsync。
-        nextPublish = Completer<void>();
-        service.schedule(settings);
-        await nextPublish!.future.timeout(const Duration(seconds: 8));
-      });
-      expect(published, isNotEmpty, reason: '设置必须独立于 PNG 底图缓存提交');
-      expect(published.last['moonScale'], settings.moonScale);
-      expect(published.last['calendarScale'], settings.calendarScale);
-      expect(published.last['romanScale'], settings.romanScale);
     }
-    expect(published.length, 4);
   });
 }
