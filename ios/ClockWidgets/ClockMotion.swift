@@ -28,10 +28,13 @@ struct LiveMechanicalMotion: View {
       let side = min(geometry.size.width, geometry.size.height)
       ZStack {
         // 单独旋转陀飞轮笼架；图片的边界就是其自身转轴，不能绕整张表盘公转。
-        Image("MotionTourbillon").resizable().scaledToFit()
-          .frame(width: 81.0656, height: 81.0656)
-          .clockHandRotationEffect(period: .custom(60), in: .gmt)
-          .offset(y: 74.448)
+        ZStack {
+          Circle().fill(AngularGradient(colors: [.gray, .white, .gray, Color(white: 0.8), .gray], center: .center))
+          Image("MotionTourbillon").resizable().scaledToFit()
+            .frame(width: 81.0656, height: 81.0656)
+            .clipShape(Circle().inset(by: 3.5))
+            .clockHandRotationEffect(period: .custom(60), in: .gmt)
+        }.frame(width: 81.0656, height: 81.0656).offset(y: 74.448)
         LiveLeafHand(length: 0.70, halfWidth: 0.044).fill(steel)
           .clockHandRotationEffect(period: .hourHand, in: .current)
         LiveLeafHand(length: 0.94, halfWidth: 0.028).fill(steel)

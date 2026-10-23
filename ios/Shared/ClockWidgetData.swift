@@ -128,7 +128,7 @@ enum ClockWidgetStore {
   }
 }
 
-/** 机械表按五分钟时间线更新；数字时间使用系统动态 Text，不依赖扩展常驻。 */
+/** 日历与月相预生成 24 小时节点；动态机械指针独立由 WidgetKit 的系统时间驱动。 */
 enum ClockTimelineSchedule {
   static func dates(from now: Date) -> [Date] {
     let start = floor(now.timeIntervalSince1970 / 300) * 300

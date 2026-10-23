@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-/** 框体、刻度及陀飞轮使用 Flutter 原画笔生成的底图，月相/日历/指针由扩展定时绘制。 */
+/** 框体、刻度使用 Flutter 原画笔底图；月相日历由时间线绘制，活动机械层单独由系统驱动。 */
 struct NativeMechanicalFace: View {
   let entry: ClockEntry
   private var background: UIImage? {
