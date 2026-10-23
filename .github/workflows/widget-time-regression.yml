@@ -1,0 +1,19 @@
+name: Widget delayed-reload regression
+on:
+  push:
+    branches: [main, codex/widget-timeline-refresh]
+    paths: ['ios/Shared/ClockWidgetData.swift', 'tool/widget_timeline_tests/**', '.github/workflows/widget-time-regression.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  timeline:
+    runs-on: macos-15
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reproduce delayed reload across hours
+        run: |
+          mkdir -p build/checks
+          swiftc -parse-as-library ios/Shared/ClockWidgetData.swift tool/widget_timeline_tests/main.swift -o build/checks/timeline
+          build/checks/timeline
