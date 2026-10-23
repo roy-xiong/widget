@@ -7,7 +7,8 @@ struct WidgetTimelineRegression {
     var failures: [String] = []
     let start = Date(timeIntervalSince1970: 1792742398)
     let dates = ClockTimelineSchedule.dates(from: start)
-    for elapsed in [0.0, 299, 3601, 3 * 3600, 8 * 3600, 23 * 3600] {
+    let samples: [TimeInterval] = [0, 299, 3601, 10800, 28800, 82800]
+    for elapsed in samples {
       let now = start.addingTimeInterval(elapsed)
       let selected = dates.last(where: { $0 <= now }) ?? start
       let age = now.timeIntervalSince(selected)
