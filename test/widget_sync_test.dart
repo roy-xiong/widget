@@ -39,9 +39,9 @@ void main() {
       const ClockSettings(moonScale: .5, calendarScale: 1.5),
       const ClockSettings(moonScale: .5, calendarScale: 1.5, romanScale: 1.25),
     ]) {
-      nextPublish = Completer<void>();
       await tester.runAsync(() async {
         // 定时器和 raster.toImage 都在真实异步区运行，不能用真实等待代替推进 FakeAsync。
+        nextPublish = Completer<void>();
         service.schedule(settings);
         await nextPublish!.future.timeout(const Duration(seconds: 8));
       });
