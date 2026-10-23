@@ -100,16 +100,14 @@ struct MechanicalWidgetView: View {
   var body: some View {
     GeometryReader { geometry in
       let medium = family == .systemMedium
-      let diameter = min(geometry.size.height - 22, medium ? geometry.size.width * 0.49 : geometry.size.width - 10)
+      let diameter = min(geometry.size.height - 10, medium ? geometry.size.width * 0.49 : geometry.size.width - 10)
       HStack(spacing: 8) {
         VStack(spacing: 0) {
           NativeMechanicalFace(entry: entry).frame(width: diameter, height: diameter)
             .accessibilityLabel("机械表盘，指针按系统时间线更新")
-          if !medium { LiveClockText().font(.system(size: 13, weight: .medium)).foregroundStyle(.white).frame(height: 18) }
         }
         if medium {
           VStack(alignment: .leading, spacing: 6) {
-            LiveClockText().font(.system(size: 30, weight: .light)).foregroundStyle(.white)
             Text(entry.date, format: .dateTime.month().day().weekday()).font(.system(size: 11)).foregroundStyle(.white.opacity(0.8))
             WidgetWeather(entry: entry)
           }.frame(maxWidth: .infinity, alignment: .leading)
