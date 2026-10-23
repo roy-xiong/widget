@@ -7,6 +7,11 @@ import UIKit
 @main
 struct WidgetMotionProbe {
   @MainActor static func main() throws {
+    setbuf(stdout, nil)
+    if CommandLine.arguments.contains("--render-app") {
+      UIApplicationMain(CommandLine.argc, CommandLine.unsafeArgv, nil, NSStringFromClass(WidgetMotionProbeDelegate.self))
+      return
+    }
     print("Runtime:", ProcessInfo.processInfo.operatingSystemVersionString)
     // import 不一定产生运行时链接引用；真实扩展由 WidgetKit 宿主加载，探针显式加载同一框架。
     print("WidgetKit loaded:", String(reflecting: type(of: WidgetCenter.shared)))
@@ -29,10 +34,6 @@ struct WidgetMotionProbe {
     }
     precondition(ClockMotionRuntime.available)
     print("PASS: real runtime type lookup, clock/cage/balance periods and iOS 27 payload decoded")
-    if CommandLine.arguments.count == 3 {
-      try validateArtwork(directory: URL(fileURLWithPath: CommandLine.arguments[1]),
-        output: URL(fileURLWithPath: CommandLine.arguments[2]))
-    }
     print("Runtime construction and fixed-date rendering are verified; live iOS 27 cadence still needs device verification.")
   }
 
@@ -52,6 +53,7 @@ struct WidgetMotionProbe {
         fatalError("Missing reference frame")
       }
       let date = Date(timeIntervalSince1970: epoch)
+      print("Rendering production widget artwork:", file)
       let view = LiveMechanicalMotion(renderDate: date, timeZone: .gmt, artwork: artwork).frame(width: 360, height: 360)
       let renderer = ImageRenderer(content: view)
       renderer.scale = 2
@@ -90,5 +92,33 @@ struct WidgetMotionProbe {
       context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
     }
     return bytes
+  }
+}
+
+/** SwiftUI ImageRenderer 在真实 UIApplication 的图形环境中执行，避免把 CLI 框架解码误当成画面验证。 */
+@MainActor
+final class WidgetMotionProbeDelegate: UIResponder, UIApplicationDelegate {
+  var window: UIWindow?
+  func application(_ application: UIApplication,
+    didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
+    let window = UIWindow(frame: UIScreen.main.bounds)
+    window.rootViewController = UIViewController()
+    window.makeKeyAndVisible()
+    self.window = window
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+      do {
+        guard let resources = Bundle.main.resourceURL,
+              let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else {
+          fatalError("Missing probe resources")
+        }
+        try WidgetMotionProbe.validateArtwork(directory: resources.appendingPathComponent("widget-artwork"), output: documents)
+        print("ARTWORK_RENDER_PASS")
+        exit(0)
+      } catch {
+        print("ARTWORK_RENDER_FAIL:", error)
+        exit(2)
+      }
+    }
+    return true
   }
 }
