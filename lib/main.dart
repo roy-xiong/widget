@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'data/preferences_repository.dart';
 import 'data/weather_repository.dart';
 import 'platform/window_service.dart';
+import 'platform/widget_sync_service.dart';
 import 'ui/clock_app.dart';
 import 'ui/clock_controller.dart';
 
@@ -14,6 +15,7 @@ void main() {
         preferences: NativePreferencesRepository(),
         weather: OpenMeteoRepository(),
         window: WindowService(),
+        widgets: WidgetSyncService(),
       ),
     ),
   );

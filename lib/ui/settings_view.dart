@@ -138,6 +138,64 @@ class _SettingsViewState extends State<SettingsView> {
                   ),
                 ],
                 const SizedBox(height: 16),
+                if (settings.style == ClockStyle.mechanical) ...<Widget>[
+                  Text(
+                    '机械表组件大小',
+                    style: Theme.of(context).textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 10),
+                  _sizeSlider(
+                    '月相',
+                    settings.moonScale,
+                    (double value) => unawaited(
+                      vm.update(vm.settings.copyWith(moonScale: value)),
+                    ),
+                  ),
+                  _sizeSlider(
+                    '星期日历',
+                    settings.calendarScale,
+                    (double value) => unawaited(
+                      vm.update(vm.settings.copyWith(calendarScale: value)),
+                    ),
+                  ),
+                  _sizeSlider(
+                    '罗马数字',
+                    settings.romanScale,
+                    (double value) => unawaited(
+                      vm.update(vm.settings.copyWith(romanScale: value)),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => unawaited(
+                      vm.update(
+                        vm.settings.copyWith(
+                          moonScale: 1,
+                          calendarScale: 1,
+                          romanScale: 1,
+                        ),
+                      ),
+                    ),
+                    child: const Text('恢复默认组件大小'),
+                  ),
+                  const SizedBox(height: 14),
+                ],
+                if (Theme.of(context).platform ==
+                    TargetPlatform.iOS) ...<Widget>[
+                  const Text(
+                    '桌面小组件',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    '长按主屏幕 → 编辑 → 添加小组件 → 桌面时钟。\n可分别添加机械表或马尼拉，中小两种尺寸。设置会同步到小组件；数字时间实时更新，机械指针由系统定时刷新。',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFFB0B8C6),
+                      height: 1.5,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 Text(
                   '天气城市 · ${settings.city.name}',
                   style: Theme.of(context).textTheme.titleSmall,
@@ -202,6 +260,14 @@ class _SettingsViewState extends State<SettingsView> {
                         unawaited(vm.update(vm.settings.copyWith(city: city))),
                   ),
                 ),
+                if (vm.widgetError != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: Text(
+                      vm.widgetError!,
+                      style: const TextStyle(color: Colors.orangeAccent),
+                    ),
+                  ),
                 if (vm.settingsError != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 12),
@@ -226,4 +292,22 @@ class _SettingsViewState extends State<SettingsView> {
       ),
     );
   }
+
+  /// 50%～150% 以默认布局为基准，滑动时即时预览并沿用 Controller 的有序持久化。
+  Widget _sizeSlider(String name, double value, ValueChanged<double> change) =>
+      Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text('$name  ${(value * 100).round()}%'),
+          Slider(
+            key: ValueKey<String>('component-$name'),
+            value: value,
+            min: .5,
+            max: 1.5,
+            divisions: 20,
+            label: '${(value * 100).round()}%',
+            onChanged: change,
+          ),
+        ],
+      );
 }

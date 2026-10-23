@@ -35,7 +35,7 @@ class WeatherSnapshot {
     'temperature': temperature,
     'code': code,
     'isDay': isDay,
-    'fetchedAt': fetchedAt.toIso8601String(),
+    'fetchedAt': fetchedAt.toUtc().toIso8601String(),
     'high': high,
     'low': low,
   };

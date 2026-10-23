@@ -96,6 +96,10 @@ class _ClockHomeState extends State<_ClockHome> {
                                       width: 360,
                                       height: 360,
                                       child: ClockDial(
+                                        moonScale: vm.settings.moonScale,
+                                        calendarScale:
+                                            vm.settings.calendarScale,
+                                        romanScale: vm.settings.romanScale,
                                         displayTime: instant,
                                         utcTime: instant.toUtc(),
                                       ),

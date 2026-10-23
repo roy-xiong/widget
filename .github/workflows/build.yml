@@ -97,6 +97,14 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get --enforce-lockfile
+      - name: Verify widget data and export native dial artwork
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build/checks
+          swiftc -parse-as-library ios/Shared/ClockWidgetData.swift ios/ClockWidgets/ClockWeatherClient.swift tool/widget_data_tests/main.swift -o build/checks/widget-data
+          build/checks/widget-data
+          flutter test --no-pub test/render_previews_test.dart --dart-define=RENDER_PREVIEWS=true --reporter expanded
       - name: Build unsigned iOS app
         shell: bash
         run: |
@@ -143,8 +151,10 @@ jobs:
           机械月相表盘与马尼拉翻页天气时钟。
 
           - macOS：透明悬浮、置顶开关、拖动吸边、多屏位置恢复、20%～160% 大小与天气城市设置。
-          - iOS：普通时钟 App；动态桌面小组件按计划暂缓。
+          - iOS：机械表与马尼拉两种桌面小组件，中小尺寸；实时数字时间，机械指针按系统时间线刷新。
+          - 月相、星期日历和罗马数字支持分别调整为 50%～150%，自动保存并同步到小组件。
+          - 小组件不保证持续秒针、陀飞轮或每分钟三维翻页。重签时 App 与扩展需使用同一 App Group。
           - iOS IPA 未签名，需要自行签名安装；macOS 为 ad-hoc 签名测试包，未公证。
           - 附 SHA-256 校验文件。Flutter 3.44.4 / Dart 3.12.2。
           NOTES
-          gh release create "preview-$GITHUB_RUN_ID" dist/* --target "$GITHUB_SHA" --prerelease --title "桌面时钟 1.0.0 · Build $CLOCK_BUILD" --notes-file "$RUNNER_TEMP/release-notes.md"
+          gh release create "preview-$GITHUB_RUN_ID" dist/* --target "$GITHUB_SHA" --prerelease --title "桌面时钟 1.1.0 · Build $CLOCK_BUILD" --notes-file "$RUNNER_TEMP/release-notes.md"

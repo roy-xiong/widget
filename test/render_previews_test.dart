@@ -140,6 +140,30 @@ void main() {
       ),
       const Size(1000, 760),
     );
+    await capture(
+      'widget-default-dial',
+      Center(
+        child: SizedBox(
+          width: 360,
+          height: 360,
+          child: CustomPaint(
+            painter: ClockDialPainter(
+              time: instant,
+              moon: MoonPhase.atUtc(instant.toUtc()),
+              showHands: false,
+              showComplications: false,
+            ),
+          ),
+        ),
+      ),
+      const Size(360, 360),
+    );
+    await tester.runAsync(() async {
+      final File source = File('build/previews/widget-default-dial.png');
+      await source.copy(
+        'ios/ClockWidgets/Assets.xcassets/DefaultDial.imageset/DefaultDial.png',
+      );
+    });
     await tester.pumpWidget(const SizedBox());
   });
 }

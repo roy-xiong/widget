@@ -57,23 +57,39 @@ class ClockSettings {
     this.alwaysOnTop = true,
     this.snapToEdge = true,
     this.scale = 1,
+    this.moonScale = 1,
+    this.calendarScale = 1,
+    this.romanScale = 1,
     this.city = WeatherCity.beijing,
   });
   final ClockStyle style;
   final bool alwaysOnTop, snapToEdge;
   final double scale;
+
+  /// 表盘组件各自相对默认大小的倍率，独立于整个桌面窗口缩放。
+  final double moonScale, calendarScale, romanScale;
+  static double componentScale(double value) =>
+      value.isFinite ? value.clamp(.5, 1.5) : 1;
   final WeatherCity city;
   ClockSettings copyWith({
     ClockStyle? style,
     bool? alwaysOnTop,
     bool? snapToEdge,
     double? scale,
+    double? moonScale,
+    double? calendarScale,
+    double? romanScale,
     WeatherCity? city,
   }) => ClockSettings(
     style: style ?? this.style,
     alwaysOnTop: alwaysOnTop ?? this.alwaysOnTop,
     snapToEdge: snapToEdge ?? this.snapToEdge,
-    scale: (scale ?? this.scale).clamp(.2, 1.6),
+    scale: (scale ?? this.scale).isFinite
+        ? (scale ?? this.scale).clamp(.2, 1.6)
+        : 1,
+    moonScale: componentScale(moonScale ?? this.moonScale),
+    calendarScale: componentScale(calendarScale ?? this.calendarScale),
+    romanScale: componentScale(romanScale ?? this.romanScale),
     city: city ?? this.city,
   );
   Map<String, Object> toJson() => <String, Object>{
@@ -81,10 +97,18 @@ class ClockSettings {
     'alwaysOnTop': alwaysOnTop,
     'snapToEdge': snapToEdge,
     'scale': scale,
+    'moonScale': moonScale,
+    'calendarScale': calendarScale,
+    'romanScale': romanScale,
     'city': city.toJson(),
   };
   factory ClockSettings.fromJson(Map<String, dynamic> value) {
     final Object? scale = value['scale'];
+    double readComponent(String key) {
+      final Object? raw = value[key];
+      return raw is num ? componentScale(raw.toDouble()) : 1;
+    }
+
     return ClockSettings(
       style: value['style'] == 'manila'
           ? ClockStyle.manila
@@ -98,6 +122,9 @@ class ClockSettings {
       scale: scale is num && scale.isFinite
           ? scale.toDouble().clamp(.2, 1.6)
           : 1,
+      moonScale: readComponent('moonScale'),
+      calendarScale: readComponent('calendarScale'),
+      romanScale: readComponent('romanScale'),
       city: WeatherCity.fromJson(value['city']) ?? WeatherCity.beijing,
     );
   }

@@ -85,6 +85,44 @@ void main() {
     expect(const ClockSettings().copyWith(scale: .01).scale, .2);
     expect(ClockSettings.fromJson(<String, dynamic>{'scale': .1}).scale, .2);
   });
+  test('组件尺寸兼容旧设置，限制异常值并持久化三个独立倍率', () async {
+    final ClockSettings old = ClockSettings.fromJson(<String, dynamic>{
+      'scale': .2,
+    });
+    expect(
+      <double>[old.moonScale, old.calendarScale, old.romanScale],
+      <double>[1, 1, 1],
+    );
+    final ClockSettings bad = ClockSettings.fromJson(<String, dynamic>{
+      'moonScale': double.nan,
+      'calendarScale': -1,
+      'romanScale': 99,
+    });
+    expect(
+      <double>[bad.moonScale, bad.calendarScale, bad.romanScale],
+      <double>[1, .5, 1.5],
+    );
+    final MemoryPreferences preferences = MemoryPreferences();
+    final ClockController vm = ClockController(
+      preferences: preferences,
+      weather: PendingWeather(),
+      window: FakeWindow(),
+      startTimers: false,
+    );
+    await vm.initialize();
+    await vm.update(
+      vm.settings.copyWith(moonScale: .75, calendarScale: 1.2, romanScale: 1.4),
+    );
+    final ClockSettings saved = ClockSettings.fromJson(
+      preferences.values['settings'] ?? <String, dynamic>{},
+    );
+    expect(
+      <double>[saved.moonScale, saved.calendarScale, saved.romanScale],
+      <double>[.75, 1.2, 1.4],
+    );
+    expect(saved.scale, 1);
+    vm.dispose();
+  });
   test('城市切换后较晚完成的旧响应不能覆盖新城市', () async {
     final PendingWeather weather = PendingWeather();
     final ClockController vm = ClockController(

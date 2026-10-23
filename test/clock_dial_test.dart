@@ -3,6 +3,57 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
+  test('三个组件尺寸变化会让静态表盘失效，指针层不会截留旧 renderer', () {
+    final DateTime instant = DateTime.utc(2026, 10, 23, 10, 8);
+    final MoonPhase moon = MoonPhase.atUtc(instant);
+    final ClockDialPainter baseline = ClockDialPainter(
+      time: instant,
+      moon: moon,
+    );
+    for (final ClockDialPainter changed in <ClockDialPainter>[
+      ClockDialPainter(time: instant, moon: moon, moonScale: .5),
+      ClockDialPainter(time: instant, moon: moon, calendarScale: 1.5),
+      ClockDialPainter(time: instant, moon: moon, romanScale: 1.5),
+    ]) {
+      expect(changed.shouldRepaint(baseline), isTrue);
+    }
+  });
+  testWidgets('组件最小最大尺寸及窄表盘可绘制，切换参数后保留正确状态', (WidgetTester tester) async {
+    final DateTime instant = DateTime.utc(2026, 10, 23, 10, 8);
+    for (final double scale in <double>[.5, 1.5]) {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Center(
+            child: SizedBox(
+              width: 72,
+              height: 72,
+              child: ClockDial(
+                displayTime: instant,
+                utcTime: instant,
+                moonScale: scale,
+                calendarScale: scale,
+                romanScale: scale,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 125));
+      final ClockDialPainter painter =
+          tester
+                  .widget<CustomPaint>(
+                    find.byKey(const ValueKey<String>('clock-dial-face')),
+                  )
+                  .painter!
+              as ClockDialPainter;
+      expect(painter.moonScale, scale);
+      expect(painter.calendarScale, scale);
+      expect(painter.romanScale, scale);
+      expect(tester.takeException(), isNull);
+    }
+    await tester.pumpWidget(const SizedBox());
+  });
+
   test('近似月相与 NASA 已知新月、上弦及满月的方向一致', () {
     // 独立日期来自 NASA 的 2024 年 UT 月相表；平均月模型允许少量相位偏差。
     final MoonPhase newMoon = MoonPhase.atUtc(DateTime.utc(2024, 4, 8, 18, 21));

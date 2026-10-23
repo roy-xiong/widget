@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
+import '../domain/clock_settings.dart';
 
 /// 供表盘显示的近似月相，不参与授时编码。
 ///
@@ -67,9 +68,13 @@ class ClockDial extends StatefulWidget {
     super.key,
     required this.displayTime,
     required this.utcTime,
+    this.moonScale = 1,
+    this.calendarScale = 1,
+    this.romanScale = 1,
   });
   final DateTime displayTime;
   final DateTime utcTime;
+  final double moonScale, calendarScale, romanScale;
   static const List<String> weekdays = <String>[
     '一',
     '二',
@@ -142,6 +147,9 @@ class _ClockDialState extends State<ClockDial>
     final ClockDialPainter face = ClockDialPainter(
       time: time,
       moon: moon,
+      moonScale: widget.moonScale,
+      calendarScale: widget.calendarScale,
+      romanScale: widget.romanScale,
       showHands: false,
       showMechanism: false,
     );
@@ -188,7 +196,8 @@ class ClockHandsPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant ClockHandsPainter oldDelegate) =>
-      oldDelegate.clock != clock;
+      oldDelegate.clock != clock ||
+      renderer.shouldRepaint(oldDelegate.renderer);
 }
 
 /// 已确认的机械表盘：XII 下方小月相、三点位星期日历、VI 上方开放式陀飞轮。
@@ -199,12 +208,18 @@ class ClockDialPainter extends CustomPainter {
     required this.moon,
     this.showHands = true,
     this.showMechanism = true,
+    this.showComplications = true,
+    this.moonScale = 1,
+    this.calendarScale = 1,
+    this.romanScale = 1,
   });
 
   final DateTime time;
   final MoonPhase moon;
   final bool showHands;
   final bool showMechanism;
+  final bool showComplications;
+  final double moonScale, calendarScale, romanScale;
 
   static const List<String> _roman = <String>[
     'I',
@@ -237,21 +252,31 @@ class ClockDialPainter extends CustomPainter {
         canvas,
         _roman[hour - 1],
         position,
-        fontSize: (radius * .17).clamp(6, 17),
+        fontSize:
+            (radius * .17).clamp(6, 17) *
+            ClockSettings.componentScale(romanScale),
         color: const Color(0xFF162332),
         fontFamily: 'serif',
-        maxWidth: radius * .45,
+        maxWidth: radius * .45 * ClockSettings.componentScale(romanScale),
         raised: true,
       );
     }
-    _calendar(canvas, center, radius);
-    // 小月相移到 XII 下方，保留原来机械月相盘的弧形窗口和金色月轮。
-    canvas.save();
-    canvas.translate(center.dx, center.dy - radius * .52);
-    canvas.scale(.56);
-    canvas.translate(-center.dx, -center.dy - radius * .375);
-    _moon(canvas, center, radius);
-    canvas.restore();
+    if (showComplications) {
+      // 以各组件的几何中心缩放，不移动原来的月相与日历锚点。
+      final Offset calendarCenter = center + Offset(radius * .4, 0);
+      canvas.save();
+      canvas.translate(calendarCenter.dx, calendarCenter.dy);
+      canvas.scale(ClockSettings.componentScale(calendarScale));
+      canvas.translate(-calendarCenter.dx, -calendarCenter.dy);
+      _calendar(canvas, center, radius);
+      canvas.restore();
+      canvas.save();
+      canvas.translate(center.dx, center.dy - radius * .52);
+      canvas.scale(.56 * ClockSettings.componentScale(moonScale));
+      canvas.translate(-center.dx, -center.dy - radius * .375);
+      _moon(canvas, center, radius);
+      canvas.restore();
+    }
     if (showMechanism) paintTourbillon(canvas, size, time);
     if (showHands) paintHands(canvas, size, MechanicalTick.snap(time));
   }
@@ -1212,6 +1237,10 @@ class ClockDialPainter extends CustomPainter {
   bool shouldRepaint(covariant ClockDialPainter oldDelegate) =>
       oldDelegate.showHands != showHands ||
       oldDelegate.showMechanism != showMechanism ||
+      oldDelegate.showComplications != showComplications ||
+      oldDelegate.moonScale != moonScale ||
+      oldDelegate.calendarScale != calendarScale ||
+      oldDelegate.romanScale != romanScale ||
       oldDelegate.time.year != time.year ||
       oldDelegate.time.month != time.month ||
       oldDelegate.time.day != time.day ||

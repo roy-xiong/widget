@@ -5,6 +5,7 @@ import '../data/weather_repository.dart';
 import '../domain/clock_settings.dart';
 import '../domain/weather_snapshot.dart';
 import '../platform/window_service.dart';
+import '../platform/widget_sync_service.dart';
 
 /// 时钟、偏好、天气的唯一所有者。版本号阻止旧城市响应覆盖新选择，销毁后不通知。
 /// 时间使用独立 ValueNotifier，秒级变化不重建设置页和天气网络逻辑。
@@ -14,11 +15,14 @@ class ClockController extends ChangeNotifier {
     required this.weather,
     required this.window,
     this.startTimers = true,
+    this.widgets,
     DateTime Function()? now,
   }) : _now = now ?? DateTime.now;
   final PreferencesRepository preferences;
   final WeatherRepository weather;
   final WindowService window;
+  final WidgetSyncService? widgets;
+  String? widgetError;
   final bool startTimers;
   final DateTime Function() _now;
   final ValueNotifier<DateTime> time = ValueNotifier<DateTime>(DateTime.now());
@@ -39,6 +43,12 @@ class ClockController extends ChangeNotifier {
   Future<void> initialize() async {
     if (ready || _disposed) return;
     window.attach();
+    widgets?.onStatus = (String? message) {
+      if (!_disposed) {
+        widgetError = message;
+        _notify();
+      }
+    };
     window.onAction = (String action) {
       if (_disposed) return;
       if (action == 'showSettings') unawaited(setShowingSettings(true));
@@ -63,6 +73,7 @@ class ClockController extends ChangeNotifier {
     }
     if (_disposed) return;
     ready = true;
+    widgets?.schedule(settings);
     time.value = _now();
     await _configureWindow();
     if (_disposed) return;
@@ -132,6 +143,7 @@ class ClockController extends ChangeNotifier {
     final Future<void> write = _save('settings', value.toJson());
     await _configureWindow();
     await write;
+    if (!_disposed) widgets?.schedule(settings);
     if (cityChanged && !_disposed) unawaited(refreshWeather());
   }
 
@@ -222,6 +234,7 @@ class ClockController extends ChangeNotifier {
     _clockTimer?.cancel();
     _weatherTimer?.cancel();
     _lifecycle?.dispose();
+    widgets?.dispose();
     window.dispose();
     weather.dispose();
     time.dispose();
