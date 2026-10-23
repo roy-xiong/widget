@@ -21,11 +21,9 @@ struct NativeMechanicalFace: View {
           context.scaleBy(x: side / 360, y: side / 360)
           drawMoon(&context)
           drawCalendar(&context)
-          if !ClockMotionRuntime.available { drawHands(&context) }
         }
-        if ClockMotionRuntime.available {
-          LiveMechanicalMotion().frame(width: min(geometry.size.width, geometry.size.height), height: min(geometry.size.width, geometry.size.height))
-        }
+        LiveMechanicalMotion(renderDate: ClockMotionRuntime.available ? nil : entry.date)
+          .frame(width: min(geometry.size.width, geometry.size.height), height: min(geometry.size.width, geometry.size.height))
       }.frame(width: geometry.size.width, height: geometry.size.height)
     }
   }
@@ -82,30 +80,7 @@ struct NativeMechanicalFace: View {
     context.stroke(path, with: .color(Color(white: 0.65)), lineWidth: r * 0.012)
   }
 
-  private func drawHands(_ context: inout GraphicsContext) {
-    let calendar = Calendar.current
-    let minute = CGFloat(calendar.component(.minute, from: entry.date))
-    let hour = CGFloat(calendar.component(.hour, from: entry.date) % 12)
-    drawHand(&context, turns: (hour + minute / 60) / 12, length: 0.70, halfWidth: 0.044)
-    drawHand(&context, turns: minute / 60, length: 0.94, halfWidth: 0.028)
-    let pin = CGRect(x: 180 - r * 0.058, y: 180 - r * 0.058, width: r * 0.116, height: r * 0.116)
-    context.fill(Path(ellipseIn: pin), with: .radialGradient(Gradient(colors: [.white, Color(red: 0.27, green: 0.35, blue: 0.42)]),
-      center: CGPoint(x: 177, y: 177), startRadius: 0, endRadius: r * 0.09))
-    context.fill(Path(ellipseIn: pin.insetBy(dx: r * 0.033, dy: r * 0.033)), with: .color(Color(red: 0.04, green: 0.16, blue: 0.3)))
-  }
-  private func drawHand(_ context: inout GraphicsContext, turns: CGFloat, length: CGFloat, halfWidth: CGFloat) {
-    var context = context; context.translateBy(x: 180, y: 180); context.rotate(by: .radians(Double(turns) * .pi * 2))
-    let tip = r * length, width = r * halfWidth, tail = r * 0.09
-    var path = Path(); path.move(to: CGPoint(x: 0, y: -tip))
-    path.addQuadCurve(to: CGPoint(x: width, y: -tip * 0.42), control: CGPoint(x: width * 0.28, y: -tip * 0.73))
-    path.addQuadCurve(to: CGPoint(x: width * 0.35, y: tail * 0.45), control: CGPoint(x: width * 0.58, y: -tip * 0.15))
-    path.addLine(to: CGPoint(x: 0, y: tail)); path.addLine(to: CGPoint(x: -width * 0.35, y: tail * 0.45))
-    path.addQuadCurve(to: CGPoint(x: -width, y: -tip * 0.42), control: CGPoint(x: -width * 0.58, y: -tip * 0.15))
-    path.addQuadCurve(to: CGPoint(x: 0, y: -tip), control: CGPoint(x: -width * 0.28, y: -tip * 0.73)); path.closeSubpath()
-    context.fill(path, with: .linearGradient(Gradient(colors: [Color(red: 0.03, green: 0.09, blue: 0.18),
-      Color(red: 0.54, green: 0.71, blue: 0.82), Color(red: 0.02, green: 0.07, blue: 0.15)]),
-      startPoint: CGPoint(x: -width, y: 0), endPoint: CGPoint(x: width, y: 0)))
-  }
+
 }
 
 /** 首次打开 App 前或共享底图缺失时的可用降级，尺寸参数仍然生效。 */

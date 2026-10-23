@@ -46,6 +46,12 @@ class MoonPhase {
   ][(fraction * 8 + .5).floor() % 8];
 }
 
+/// 从正式画笔导出的独立透明图层，小组件直接复用，不再另画近似指针。
+enum HandArtwork { hour, minute, second, pin }
+
+/// 固定金属框与活动机芯分开，避免旋转整张截图导致外框也跟着转动。
+enum TourbillonArtwork { rim, mechanism }
+
 /// 常见 28,800 次/小时机械机芯的显示节奏；只改变视觉，不改变授时音频。
 abstract final class MechanicalTick {
   static const int beatsPerSecond = 8;
@@ -426,7 +432,12 @@ class ClockDialPainter extends CustomPainter {
   }
 
   /// 只画活动指针。时、分针同时计入小步进秒数，分钟交界不突然跳位。
-  void paintHands(Canvas canvas, Size size, DateTime instant) {
+  void paintHands(
+    Canvas canvas,
+    Size size,
+    DateTime instant, {
+    HandArtwork? layer,
+  }) {
     final Offset center = Offset(size.width / 2, size.height / 2);
     final double radius = (math.min(size.width, size.height) / 2 - 4) * .94;
     if (radius <= 0) return;
@@ -444,81 +455,93 @@ class ClockDialPainter extends CustomPainter {
       Color(0xFF183D68),
       Color(0xFF061327),
     ];
-    _hand(
-      canvas,
-      center,
-      radius,
-      hour,
-      length: .70,
-      halfWidth: .044,
-      colors: steel,
-    );
-    _hand(
-      canvas,
-      center,
-      radius,
-      minute,
-      length: .94,
-      halfWidth: .028,
-      colors: steel,
-    );
-    canvas.save();
-    canvas.translate(center.dx, center.dy);
-    canvas.rotate(secondValue / 60 * 2 * math.pi);
-    final Paint second = Paint()
-      ..color = const Color(0xFF173E68)
-      ..strokeWidth = (radius * .014).clamp(.65, 1.2)
-      ..strokeCap = StrokeCap.round;
-    canvas.drawLine(
-      Offset(radius * .01, radius * .18),
-      Offset(radius * .01, -radius * .955),
-      Paint()
-        ..color = const Color(0x44362F26)
-        ..strokeWidth = radius * .018,
-    );
-    canvas.drawLine(Offset(0, radius * .18), Offset(0, -radius * .955), second);
-    canvas.drawCircle(
-      Offset(0, radius * .13),
-      radius * .033,
-      Paint()..color = const Color(0xFFF8F7F1),
-    );
-    canvas.drawCircle(
-      Offset(0, radius * .13),
-      radius * .033,
-      second..style = PaintingStyle.stroke,
-    );
-    canvas.restore();
-    final Rect pin = Rect.fromCircle(center: center, radius: radius * .058);
-    canvas.drawCircle(
-      center + Offset(radius * .009, radius * .016),
-      radius * .064,
-      Paint()
-        ..color = const Color(0x5544382C)
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, radius * .012),
-    );
-    canvas.drawCircle(
-      center,
-      radius * .058,
-      Paint()
-        ..shader = const RadialGradient(
-          center: Alignment(-.35, -.4),
-          colors: <Color>[
-            Color(0xFFFFFFFF),
-            Color(0xFFB5C2CD),
-            Color(0xFF46596A),
-          ],
-        ).createShader(pin),
-    );
-    canvas.drawCircle(
-      center,
-      radius * .025,
-      Paint()..color = const Color(0xFF0B294C),
-    );
-    canvas.drawCircle(
-      center - Offset(radius * .008, radius * .008),
-      radius * .008,
-      Paint()..color = const Color(0xFFB8D1E0),
-    );
+    if (layer == null || layer == HandArtwork.hour) {
+      _hand(
+        canvas,
+        center,
+        radius,
+        hour,
+        length: .70,
+        halfWidth: .044,
+        colors: steel,
+      );
+    }
+    if (layer == null || layer == HandArtwork.minute) {
+      _hand(
+        canvas,
+        center,
+        radius,
+        minute,
+        length: .94,
+        halfWidth: .028,
+        colors: steel,
+      );
+    }
+    if (layer == null || layer == HandArtwork.second) {
+      canvas.save();
+      canvas.translate(center.dx, center.dy);
+      canvas.rotate(secondValue / 60 * 2 * math.pi);
+      final Paint second = Paint()
+        ..color = const Color(0xFF173E68)
+        ..strokeWidth = (radius * .014).clamp(.65, 1.2)
+        ..strokeCap = StrokeCap.round;
+      canvas.drawLine(
+        Offset(radius * .01, radius * .18),
+        Offset(radius * .01, -radius * .955),
+        Paint()
+          ..color = const Color(0x44362F26)
+          ..strokeWidth = radius * .018,
+      );
+      canvas.drawLine(
+        Offset(0, radius * .18),
+        Offset(0, -radius * .955),
+        second,
+      );
+      canvas.drawCircle(
+        Offset(0, radius * .13),
+        radius * .033,
+        Paint()..color = const Color(0xFFF8F7F1),
+      );
+      canvas.drawCircle(
+        Offset(0, radius * .13),
+        radius * .033,
+        second..style = PaintingStyle.stroke,
+      );
+      canvas.restore();
+    }
+    if (layer == null || layer == HandArtwork.pin) {
+      final Rect pin = Rect.fromCircle(center: center, radius: radius * .058);
+      canvas.drawCircle(
+        center + Offset(radius * .009, radius * .016),
+        radius * .064,
+        Paint()
+          ..color = const Color(0x5544382C)
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, radius * .012),
+      );
+      canvas.drawCircle(
+        center,
+        radius * .058,
+        Paint()
+          ..shader = const RadialGradient(
+            center: Alignment(-.35, -.4),
+            colors: <Color>[
+              Color(0xFFFFFFFF),
+              Color(0xFFB5C2CD),
+              Color(0xFF46596A),
+            ],
+          ).createShader(pin),
+      );
+      canvas.drawCircle(
+        center,
+        radius * .025,
+        Paint()..color = const Color(0xFF0B294C),
+      );
+      canvas.drawCircle(
+        center - Offset(radius * .008, radius * .008),
+        radius * .008,
+        Paint()..color = const Color(0xFFB8D1E0),
+      );
+    }
   }
 
   /// 叶形针尖分别接近小时刻度与分钟轨道；窄针尖和明暗切面便于区分落点。
@@ -938,7 +961,13 @@ class ClockDialPainter extends CustomPainter {
   /// 开放式陀飞轮：凹入表盘的金属框、齿轮、摆轮、游丝和三臂笼架。
   /// 陀飞轮单独随活动画布更新；笼架每分钟一圈，游丝按机械摆频小幅往复。
   /// 所有角度取自绝对时间，恢复窗口后不会补播动画或累计走时误差。
-  void paintTourbillon(Canvas canvas, Size size, DateTime instant) {
+  void paintTourbillon(
+    Canvas canvas,
+    Size size,
+    DateTime instant, {
+    TourbillonArtwork? layer,
+    bool freezeCage = false,
+  }) {
     final Offset center = Offset(size.width / 2, size.height / 2);
     final double radius = (math.min(size.width, size.height) / 2 - 4) * .94;
     if (radius > 0) {
@@ -947,6 +976,8 @@ class ClockDialPainter extends CustomPainter {
         center + Offset(0, radius * .45),
         radius * .245,
         instant,
+        layer: layer,
+        freezeCage: freezeCage,
       );
     }
   }
@@ -955,227 +986,235 @@ class ClockDialPainter extends CustomPainter {
     Canvas canvas,
     Offset center,
     double radius,
-    DateTime instant,
-  ) {
+    DateTime instant, {
+    TourbillonArtwork? layer,
+    bool freezeCage = false,
+  }) {
     final double seconds =
         instant.second +
         instant.millisecond / 1000 +
         instant.microsecond / 1000000;
-    final double cageAngle = seconds / 60 * math.pi * 2;
+    final double cageAngle = freezeCage ? 0.0 : seconds / 60 * math.pi * 2;
     final double balanceSwing = math.cos(seconds * math.pi * 8) * .30;
     final Rect rim = Rect.fromCircle(center: center, radius: radius);
-    canvas.drawCircle(
-      center + Offset(0, radius * .025),
-      radius * 1.025,
-      Paint()
-        ..color = const Color(0x553C3A32)
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, radius * .045),
-    );
-    canvas.drawCircle(
-      center,
-      radius,
-      Paint()
-        ..shader = const SweepGradient(
-          colors: <Color>[
-            Color(0xFFEAEDEE),
-            Color(0xFF657079),
-            Color(0xFFF9FAF7),
-            Color(0xFF727B82),
-            Color(0xFFEAEDEE),
-          ],
-        ).createShader(rim),
-    );
-    canvas.drawCircle(
-      center,
-      radius * .92,
-      Paint()
-        ..shader = const RadialGradient(
-          center: Alignment(-.3, -.5),
-          colors: <Color>[
-            Color(0xFF4A4941),
-            Color(0xFF111716),
-            Color(0xFF020605),
-          ],
-        ).createShader(rim),
-    );
-    canvas.save();
-    canvas.clipPath(
-      Path()..addOval(Rect.fromCircle(center: center, radius: radius * .90)),
-    );
-    canvas.translate(center.dx, center.dy);
-    canvas.rotate(cageAngle);
-    canvas.translate(-center.dx, -center.dy);
-    // 后层夹板与齿轮先绘制，摆轮与游丝居中，笼架最后覆盖，形成真实的前后层次。
-    _gear(
-      canvas,
-      center + Offset(-radius * .43, -radius * .43),
-      radius * .31,
-      14,
-      .22,
-    );
-    _gear(
-      canvas,
-      center + Offset(radius * .47, -radius * .22),
-      radius * .28,
-      12,
-      -.15,
-    );
-    _gear(
-      canvas,
-      center + Offset(radius * .42, radius * .47),
-      radius * .26,
-      13,
-      .3,
-    );
-    final Offset balance = center + Offset(-radius * .05, radius * .07);
-    final Rect wheel = Rect.fromCircle(center: balance, radius: radius * .71);
-    canvas.drawCircle(
-      balance,
-      radius * .68,
-      Paint()
-        ..shader = const SweepGradient(
-          colors: <Color>[
-            Color(0xFFECD698),
-            Color(0xFF8B6228),
-            Color(0xFFFFF0B5),
-            Color(0xFFB48841),
-            Color(0xFFECD698),
-          ],
-        ).createShader(wheel)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = radius * .075,
-    );
-    canvas.drawCircle(
-      balance,
-      radius * .60,
-      Paint()
-        ..color = const Color(0xFF7F592B)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = radius * .022,
-    );
-    for (int i = 0; i < 12; i++) {
-      final double angle = i * math.pi / 6 + .1 + balanceSwing;
-      final Offset screw =
-          balance + Offset(math.cos(angle), math.sin(angle)) * radius * .68;
+    if (layer != TourbillonArtwork.mechanism) {
       canvas.drawCircle(
-        screw,
-        radius * .036,
-        Paint()..color = const Color(0xFFD7BA71),
-      );
-      canvas.drawLine(
-        screw - Offset(radius * .023, 0),
-        screw + Offset(radius * .023, 0),
+        center + Offset(0, radius * .025),
+        radius * 1.025,
         Paint()
-          ..color = const Color(0xFF664625)
-          ..strokeWidth = radius * .012,
+          ..color = const Color(0x553C3A32)
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, radius * .045),
+      );
+      canvas.drawCircle(
+        center,
+        radius,
+        Paint()
+          ..shader = const SweepGradient(
+            colors: <Color>[
+              Color(0xFFEAEDEE),
+              Color(0xFF657079),
+              Color(0xFFF9FAF7),
+              Color(0xFF727B82),
+              Color(0xFFEAEDEE),
+            ],
+          ).createShader(rim),
+      );
+      canvas.drawCircle(
+        center,
+        radius * .92,
+        Paint()
+          ..shader = const RadialGradient(
+            center: Alignment(-.3, -.5),
+            colors: <Color>[
+              Color(0xFF4A4941),
+              Color(0xFF111716),
+              Color(0xFF020605),
+            ],
+          ).createShader(rim),
       );
     }
-    final Path spring = Path();
-    for (int i = 0; i <= 540; i++) {
-      final double angle = i / 540 * math.pi * 10 + balanceSwing;
-      final double distance = radius * (.05 + i / 540 * .49);
-      final Offset point =
-          balance + Offset(math.cos(angle), math.sin(angle)) * distance;
-      if (i == 0) {
-        spring.moveTo(point.dx, point.dy);
-      } else {
-        spring.lineTo(point.dx, point.dy);
-      }
-    }
-    canvas.drawPath(
-      spring,
-      Paint()
-        ..color = const Color(0xFFADC2CA)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = radius * .014,
-    );
-    for (int arm = 0; arm < 3; arm++) {
+    if (layer != TourbillonArtwork.rim) {
       canvas.save();
+      canvas.clipPath(
+        Path()..addOval(Rect.fromCircle(center: center, radius: radius * .90)),
+      );
       canvas.translate(center.dx, center.dy);
-      canvas.rotate(arm * math.pi * 2 / 3 - .18);
-      final Path bridge = Path()
-        ..moveTo(-radius * .10, radius * .12)
-        ..lineTo(-radius * .075, -radius * .64)
-        ..quadraticBezierTo(0, -radius * .83, radius * .10, -radius * .66)
-        ..lineTo(radius * .17, radius * .07)
-        ..close();
-      canvas.drawPath(
-        bridge.shift(Offset(radius * .02, radius * .035)),
-        Paint()..color = const Color(0xB0000000),
+      canvas.rotate(cageAngle);
+      canvas.translate(-center.dx, -center.dy);
+      // 后层夹板与齿轮先绘制，摆轮与游丝居中，笼架最后覆盖，形成真实的前后层次。
+      _gear(
+        canvas,
+        center + Offset(-radius * .43, -radius * .43),
+        radius * .31,
+        14,
+        .22,
       );
-      canvas.drawPath(
-        bridge,
-        Paint()
-          ..shader =
-              const LinearGradient(
-                colors: <Color>[
-                  Color(0xFF727F89),
-                  Color(0xFFF0F2EB),
-                  Color(0xFFB3C0C4),
-                  Color(0xFF52616B),
-                ],
-                stops: <double>[0, .35, .49, 1],
-              ).createShader(
-                Rect.fromLTRB(
-                  -radius * .13,
-                  -radius * .8,
-                  radius * .18,
-                  radius * .12,
-                ),
-              ),
+      _gear(
+        canvas,
+        center + Offset(radius * .47, -radius * .22),
+        radius * .28,
+        12,
+        -.15,
       );
-      final Offset pin = Offset(radius * .015, -radius * .68);
+      _gear(
+        canvas,
+        center + Offset(radius * .42, radius * .47),
+        radius * .26,
+        13,
+        .3,
+      );
+      final Offset balance = center + Offset(-radius * .05, radius * .07);
+      final Rect wheel = Rect.fromCircle(center: balance, radius: radius * .71);
       canvas.drawCircle(
-        pin,
-        radius * .055,
-        Paint()..color = const Color(0xFF192C43),
-      );
-      canvas.drawLine(
-        pin - Offset(radius * .033, 0),
-        pin + Offset(radius * .033, 0),
+        balance,
+        radius * .68,
         Paint()
-          ..color = const Color(0xFFB2C1CB)
-          ..strokeWidth = radius * .015,
+          ..shader = const SweepGradient(
+            colors: <Color>[
+              Color(0xFFECD698),
+              Color(0xFF8B6228),
+              Color(0xFFFFF0B5),
+              Color(0xFFB48841),
+              Color(0xFFECD698),
+            ],
+          ).createShader(wheel)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = radius * .075,
+      );
+      canvas.drawCircle(
+        balance,
+        radius * .60,
+        Paint()
+          ..color = const Color(0xFF7F592B)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = radius * .022,
+      );
+      for (int i = 0; i < 12; i++) {
+        final double angle = i * math.pi / 6 + .1 + balanceSwing;
+        final Offset screw =
+            balance + Offset(math.cos(angle), math.sin(angle)) * radius * .68;
+        canvas.drawCircle(
+          screw,
+          radius * .036,
+          Paint()..color = const Color(0xFFD7BA71),
+        );
+        canvas.drawLine(
+          screw - Offset(radius * .023, 0),
+          screw + Offset(radius * .023, 0),
+          Paint()
+            ..color = const Color(0xFF664625)
+            ..strokeWidth = radius * .012,
+        );
+      }
+      final Path spring = Path();
+      for (int i = 0; i <= 540; i++) {
+        final double angle = i / 540 * math.pi * 10 + balanceSwing;
+        final double distance = radius * (.05 + i / 540 * .49);
+        final Offset point =
+            balance + Offset(math.cos(angle), math.sin(angle)) * distance;
+        if (i == 0) {
+          spring.moveTo(point.dx, point.dy);
+        } else {
+          spring.lineTo(point.dx, point.dy);
+        }
+      }
+      canvas.drawPath(
+        spring,
+        Paint()
+          ..color = const Color(0xFFADC2CA)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = radius * .014,
+      );
+      for (int arm = 0; arm < 3; arm++) {
+        canvas.save();
+        canvas.translate(center.dx, center.dy);
+        canvas.rotate(arm * math.pi * 2 / 3 - .18);
+        final Path bridge = Path()
+          ..moveTo(-radius * .10, radius * .12)
+          ..lineTo(-radius * .075, -radius * .64)
+          ..quadraticBezierTo(0, -radius * .83, radius * .10, -radius * .66)
+          ..lineTo(radius * .17, radius * .07)
+          ..close();
+        canvas.drawPath(
+          bridge.shift(Offset(radius * .02, radius * .035)),
+          Paint()..color = const Color(0xB0000000),
+        );
+        canvas.drawPath(
+          bridge,
+          Paint()
+            ..shader =
+                const LinearGradient(
+                  colors: <Color>[
+                    Color(0xFF727F89),
+                    Color(0xFFF0F2EB),
+                    Color(0xFFB3C0C4),
+                    Color(0xFF52616B),
+                  ],
+                  stops: <double>[0, .35, .49, 1],
+                ).createShader(
+                  Rect.fromLTRB(
+                    -radius * .13,
+                    -radius * .8,
+                    radius * .18,
+                    radius * .12,
+                  ),
+                ),
+        );
+        final Offset pin = Offset(radius * .015, -radius * .68);
+        canvas.drawCircle(
+          pin,
+          radius * .055,
+          Paint()..color = const Color(0xFF192C43),
+        );
+        canvas.drawLine(
+          pin - Offset(radius * .033, 0),
+          pin + Offset(radius * .033, 0),
+          Paint()
+            ..color = const Color(0xFFB2C1CB)
+            ..strokeWidth = radius * .015,
+        );
+        canvas.restore();
+      }
+      canvas.drawCircle(
+        center,
+        radius * .125,
+        Paint()..color = const Color(0xFFCAD1CC),
+      );
+      canvas.drawCircle(
+        center,
+        radius * .073,
+        Paint()
+          ..shader = const RadialGradient(
+            center: Alignment(-.4, -.4),
+            colors: <Color>[
+              Color(0xFFF6A6B3),
+              Color(0xFF9D1D3A),
+              Color(0xFF4A091B),
+            ],
+          ).createShader(Rect.fromCircle(center: center, radius: radius * .08)),
       );
       canvas.restore();
     }
-    canvas.drawCircle(
-      center,
-      radius * .125,
-      Paint()..color = const Color(0xFFCAD1CC),
-    );
-    canvas.drawCircle(
-      center,
-      radius * .073,
-      Paint()
-        ..shader = const RadialGradient(
-          center: Alignment(-.4, -.4),
-          colors: <Color>[
-            Color(0xFFF6A6B3),
-            Color(0xFF9D1D3A),
-            Color(0xFF4A091B),
-          ],
-        ).createShader(Rect.fromCircle(center: center, radius: radius * .08)),
-    );
-    canvas.restore();
-    canvas.drawCircle(
-      center,
-      radius * .94,
-      Paint()
-        ..color = const Color(0xFFCBCDC4)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = radius * .022,
-    );
-    canvas.drawArc(
-      rim.deflate(radius * .035),
-      3.8,
-      1.7,
-      false,
-      Paint()
-        ..color = const Color(0xB3FFFFFF)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = radius * .018,
-    );
+    if (layer != TourbillonArtwork.mechanism) {
+      canvas.drawCircle(
+        center,
+        radius * .94,
+        Paint()
+          ..color = const Color(0xFFCBCDC4)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = radius * .022,
+      );
+      canvas.drawArc(
+        rim.deflate(radius * .035),
+        3.8,
+        1.7,
+        false,
+        Paint()
+          ..color = const Color(0xB3FFFFFF)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = radius * .018,
+      );
+    }
   }
 
   /// 齿顶与齿根交替构成开放式齿轮，保留深色中心孔和三根轮辐。

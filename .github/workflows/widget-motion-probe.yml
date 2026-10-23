@@ -1,17 +1,25 @@
 name: Probe live widget rotation
 on:
   push:
-    branches: [main, codex/widget-timeline-refresh]
-    paths: ['ios/ClockWidgets/ClockMotion.swift', 'third_party/ClockHandKit/**', 'tool/widget_motion_probe/**', '.github/workflows/widget-motion-probe.yml']
+    branches: [main, codex/widget-artwork-sync]
+    paths: ['ios/ClockWidgets/ClockMotion.swift', 'lib/ui/clock_dial.dart', 'test/render_previews_test.dart', 'third_party/ClockHandKit/**', 'tool/widget_motion_probe/**', '.github/workflows/widget-motion-probe.yml']
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
   simulator-runtime:
     runs-on: macos-15
-    timeout-minutes: 15
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.4'
+          channel: stable
+          cache: true
+      - run: flutter pub get --enforce-lockfile
+      - name: Export real App layers and reference frames
+        run: flutter test --no-pub test/render_previews_test.dart --dart-define=RENDER_PREVIEWS=true --reporter expanded
       - name: Build simulator runtime probe
         shell: bash
         run: |
@@ -38,7 +46,7 @@ jobs:
           )
           xcrun simctl boot "$clock_device" || true
           xcrun simctl bootstatus "$clock_device" -b
-          xcrun simctl spawn "$clock_device" "$PWD/build/checks/widget-motion-probe" 2>&1 | tee build/checks/runtime-probe.log
+          xcrun simctl spawn "$clock_device" "$PWD/build/checks/widget-motion-probe" "$PWD/build/previews/widget-artwork" "$PWD/build/checks" 2>&1 | tee build/checks/runtime-probe.log
       - uses: actions/upload-artifact@v4
         if: always()
         with:

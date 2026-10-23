@@ -1,6 +1,7 @@
 import Foundation
 import SwiftUI
 import WidgetKit
+import UIKit
 
 /** 云端模拟器真实运行时检测，不把源码包含字段或仅编译成功当成动态效果可用。 */
 @main
@@ -12,7 +13,7 @@ struct WidgetMotionProbe {
     if let type = _typeByName("9WidgetKit24_ClockHandRotationEffectV") {
       print("Resolved effect type:", String(reflecting: type))
     }
-    let periods: [(ClockHandPeriod, Double)] = [(.hourHand, 43200), (.minuteHand, 3600), (.secondHand, 60), (.custom(60), 60)]
+    let periods: [(ClockHandPeriod, Double)] = [(.hourHand, 43200), (.minuteHand, 3600), (.secondHand, 60), (.custom(60), 60), (.custom(0.25), 0.25)]
     for (period, duration) in periods {
       let bytes = try JSONEncoder().encode(_ClockHandData(period: period.duration, timeZone: .current, anchor: .center))
       let json = try JSONSerialization.jsonObject(with: bytes) as? [String: Any]
@@ -27,7 +28,67 @@ struct WidgetMotionProbe {
       print("Decoded real WidgetKit rotation: \(duration)s")
     }
     precondition(ClockMotionRuntime.available)
-    print("PASS: real runtime type lookup, all four periods and iOS 27 payload decoded")
-    print("This proves runtime construction only; Home Screen animation still needs device verification.")
+    print("PASS: real runtime type lookup, clock/cage/balance periods and iOS 27 payload decoded")
+    if CommandLine.arguments.count == 3 {
+      try validateArtwork(directory: URL(fileURLWithPath: CommandLine.arguments[1]),
+        output: URL(fileURLWithPath: CommandLine.arguments[2]))
+    }
+    print("Runtime construction and fixed-date rendering are verified; live iOS 27 cadence still needs device verification.")
+  }
+
+  /** 渲染正式 SwiftUI 活动层，与 Flutter 正式画笔在同一时刻的输出逐像素对照。 */
+  @MainActor static func validateArtwork(directory: URL, output: URL) throws {
+    let artwork = ClockMotionArtwork(directory: directory)
+    precondition(artwork.complete, "All canonical App layers must be present")
+    let data = try Data(contentsOf: directory.appendingPathComponent("timing.json"))
+    guard let manifest = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+          let samples = manifest["samples"] as? [[String: Any]] else { fatalError("Invalid artwork manifest") }
+    precondition(manifest["cagePeriod"] as? Double == ClockMotionTiming.cagePeriod)
+    precondition(manifest["balancePeriod"] as? Double == ClockMotionTiming.balancePeriod)
+    precondition(manifest["beatInterval"] as? Double == ClockMotionTiming.beatInterval)
+    for sample in samples {
+      guard let epoch = sample["epoch"] as? Double, let file = sample["file"] as? String,
+            let reference = UIImage(contentsOfFile: directory.appendingPathComponent(file).path)?.cgImage else {
+        fatalError("Missing reference frame")
+      }
+      let date = Date(timeIntervalSince1970: epoch)
+      let view = LiveMechanicalMotion(renderDate: date, timeZone: .gmt, artwork: artwork).frame(width: 360, height: 360)
+      let renderer = ImageRenderer(content: view)
+      renderer.scale = 2
+      guard let image = renderer.uiImage, let actual = image.cgImage, let png = image.pngData() else {
+        fatalError("Production motion view did not render")
+      }
+      try png.write(to: output.appendingPathComponent("native-" + file))
+      let expectedBytes = pixels(reference), actualBytes = pixels(actual)
+      precondition(expectedBytes.count == actualBytes.count)
+      var ink = 0, difference = 0, overlapping = 0, expectedInk = 0
+      for pixel in stride(from: 0, to: expectedBytes.count, by: 4) {
+        let expectedAlpha = Int(expectedBytes[pixel + 3]), actualAlpha = Int(actualBytes[pixel + 3])
+        if expectedAlpha > 24 { expectedInk += 1 }
+        if expectedAlpha > 24 && actualAlpha > 24 { overlapping += 1 }
+        if max(expectedAlpha, actualAlpha) > 24 {
+          ink += 1
+          for channel in 0..<4 { difference += abs(Int(expectedBytes[pixel + channel]) - Int(actualBytes[pixel + channel])) }
+        }
+      }
+      let mean = Double(difference) / Double(max(1, ink) * 4)
+      let overlap = Double(overlapping) / Double(max(1, expectedInk))
+      print("ARTWORK \(file): mean ink delta=\(mean), overlap=\(overlap), balance frame=\(ClockMotionTiming.balanceFrame(at: date))")
+      precondition(overlap > 0.92, "Hand/mechanism placement differs from App")
+      precondition(mean < 18, "Hand UI or tourbillon phase differs from App")
+    }
+    print("PASS: production widget hands, fixed rim and 8 Hz balance match App reference frames")
+  }
+
+  /** 统一 PNG/SwiftUI 的颜色通道和像素坐标，避免图片内部 BGRA 排列造成误判。 */
+  static func pixels(_ image: CGImage) -> [UInt8] {
+    var bytes = [UInt8](repeating: 0, count: image.width * image.height * 4)
+    bytes.withUnsafeMutableBytes { buffer in
+      guard let context = CGContext(data: buffer.baseAddress, width: image.width, height: image.height,
+        bitsPerComponent: 8, bytesPerRow: image.width * 4, space: CGColorSpaceCreateDeviceRGB(),
+        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { fatalError("Cannot allocate pixel context") }
+      context.draw(image, in: CGRect(x: 0, y: 0, width: image.width, height: image.height))
+    }
+    return bytes
   }
 }

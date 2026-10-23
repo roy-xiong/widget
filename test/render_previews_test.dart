@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:convert';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -6,7 +7,12 @@ import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:desktop_clock/domain/weather_snapshot.dart';
 import 'package:desktop_clock/ui/clock_dial.dart'
-    show MoonPhase, ClockDialPainter;
+    show
+        MoonPhase,
+        ClockDialPainter,
+        HandArtwork,
+        TourbillonArtwork,
+        MechanicalTick;
 import 'package:desktop_clock/ui/manila_clock.dart';
 
 /// 只在专用云端渲染任务执行，导出真正的 Flutter 画布，而不修改正式机械表盘。
@@ -184,37 +190,134 @@ void main() {
       const Size(360, 360),
     );
     await tester.runAsync(() async {
-      final ui.PictureRecorder recorder = ui.PictureRecorder();
-      const double radius = 165.44;
-      const double edge = radius * .49;
-      final Canvas canvas = Canvas(recorder)
-        ..scale(256 / edge)
-        ..translate(-(180 - edge / 2), -(180 + radius * .45 - edge / 2));
+      final Directory output = Directory('build/previews/widget-artwork');
+      await output.create(recursive: true);
+      Future<void> writeCanvas(
+        String name,
+        void Function(Canvas) paint, {
+        bool cropped = false,
+        bool asset = true,
+      }) async {
+        final ui.PictureRecorder recorder = ui.PictureRecorder();
+        final Canvas canvas = Canvas(recorder);
+        final int pixels = cropped ? 256 : 720;
+        if (cropped) {
+          const double radius = 165.44, edge = radius * .49;
+          canvas.scale(pixels / edge);
+          canvas.translate(-(180 - edge / 2), -(180 + radius * .45 - edge / 2));
+        } else {
+          canvas.scale(pixels / 360);
+        }
+        paint(canvas);
+        final ui.Picture picture = recorder.endRecording();
+        ui.Image? image;
+        try {
+          image = await picture.toImage(pixels, pixels);
+          final ByteData? bytes = await image.toByteData(
+            format: ui.ImageByteFormat.png,
+          );
+          if (bytes == null) throw StateError('Missing artwork $name');
+          final File file = File('${output.path}/$name.png');
+          await file.writeAsBytes(bytes.buffer.asUint8List());
+          if (asset) {
+            final Directory imageset = Directory(
+              'ios/ClockWidgets/Assets.xcassets/$name.imageset',
+            );
+            await imageset.create(recursive: true);
+            await file.copy('${imageset.path}/$name.png');
+            await File('${imageset.path}/Contents.json').writeAsString(
+              jsonEncode(<String, Object>{
+                'images': <Object>[
+                  <String, String>{
+                    'filename': '$name.png',
+                    'idiom': 'universal',
+                  },
+                ],
+                'info': <String, Object>{'author': 'xcode', 'version': 1},
+              }),
+            );
+          }
+        } finally {
+          image?.dispose();
+          picture.dispose();
+        }
+      }
+
       final DateTime reference = DateTime.utc(2026, 1, 1);
-      ClockDialPainter(
+      final ClockDialPainter painter = ClockDialPainter(
         time: reference,
         moon: MoonPhase.atUtc(reference),
-      ).paintTourbillon(canvas, const Size(360, 360), reference);
-      final ui.Picture picture = recorder.endRecording();
-      final ui.Image image = await picture.toImage(256, 256);
-      try {
-        final ByteData? bytes = await image.toByteData(
-          format: ui.ImageByteFormat.png,
+      );
+      for (final HandArtwork layer in HandArtwork.values) {
+        final String name = <HandArtwork, String>{
+          HandArtwork.hour: 'MotionHourHand',
+          HandArtwork.minute: 'MotionMinuteHand',
+          HandArtwork.second: 'MotionSecondHand',
+          HandArtwork.pin: 'MotionPin',
+        }[layer]!;
+        await writeCanvas(
+          name,
+          (Canvas canvas) => painter.paintHands(
+            canvas,
+            const Size(360, 360),
+            reference,
+            layer: layer,
+          ),
         );
-        if (bytes == null) throw StateError('Missing tourbillon PNG');
-        await File(
-          'ios/ClockWidgets/Assets.xcassets/MotionTourbillon.imageset/MotionTourbillon.png',
-        ).writeAsBytes(bytes.buffer.asUint8List());
-        await File(
-          'build/previews/widget-motion-tourbillon.png',
-        ).writeAsBytes(bytes.buffer.asUint8List());
-        await File('build/previews/widget-motion-dial.png').copy(
-          'ios/ClockWidgets/Assets.xcassets/MotionDial.imageset/MotionDial.png',
-        );
-      } finally {
-        image.dispose();
-        picture.dispose();
       }
+      await writeCanvas(
+        'TourbillonRim',
+        (Canvas canvas) => painter.paintTourbillon(
+          canvas,
+          const Size(360, 360),
+          reference,
+          layer: TourbillonArtwork.rim,
+        ),
+        cropped: true,
+      );
+      for (int index = 0; index < 2; index++) {
+        await writeCanvas(
+          index == 0 ? 'TourbillonPositive' : 'TourbillonNegative',
+          (Canvas canvas) => painter.paintTourbillon(
+            canvas,
+            const Size(360, 360),
+            reference.add(Duration(milliseconds: 125 * index)),
+            layer: TourbillonArtwork.mechanism,
+            freezeCage: true,
+          ),
+          cropped: true,
+        );
+      }
+      final List<Map<String, Object>> samples = <Map<String, Object>>[];
+      for (final (int index, DateTime date) in <DateTime>[
+        DateTime.utc(2026, 1, 1, 10, 8, 0, 16),
+        DateTime.utc(2026, 1, 1, 10, 8, 0, 141),
+        DateTime.utc(2026, 1, 1, 10, 8, 15, 16),
+        DateTime.utc(2026, 1, 1, 10, 8, 38, 141),
+        DateTime.utc(2026, 1, 1, 23, 59, 59, 891),
+      ].indexed) {
+        final String name = 'reference-$index';
+        final DateTime snapped = MechanicalTick.snap(date);
+        await writeCanvas(name, (Canvas canvas) {
+          painter.paintTourbillon(canvas, const Size(360, 360), snapped);
+          painter.paintHands(canvas, const Size(360, 360), snapped);
+        }, asset: false);
+        samples.add(<String, Object>{
+          'epoch': date.microsecondsSinceEpoch / 1000000,
+          'file': '$name.png',
+        });
+      }
+      await File('${output.path}/timing.json').writeAsString(
+        jsonEncode(<String, Object>{
+          'cagePeriod': 60,
+          'balancePeriod': .25,
+          'beatInterval': .125,
+          'samples': samples,
+        }),
+      );
+      await File('build/previews/widget-motion-dial.png').copy(
+        'ios/ClockWidgets/Assets.xcassets/MotionDial.imageset/MotionDial.png',
+      );
     });
     await tester.pumpWidget(const SizedBox());
   });

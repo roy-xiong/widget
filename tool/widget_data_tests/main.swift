@@ -27,6 +27,22 @@ func validateModels() {
   let invalid = SharedClockSettings(raw: #"{"city":{"name":"bad","latitude":999,"longitude":0}}"#)
   precondition(invalid.cityName == "北京")
   precondition(SharedClockSettings(raw: "[not json").romanScale == 1)
+  // 与 App 的正式写入/小组件正式读取共用函数，逐项修改时不依赖 UserDefaults 的跨进程缓存。
+  let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+  try! FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+  defer { try? FileManager.default.removeItem(at: directory) }
+  for raw in [#"{"moonScale":0.5,"calendarScale":1,"romanScale":1}"#,
+              #"{"moonScale":0.5,"calendarScale":1.5,"romanScale":1}"#,
+              #"{"moonScale":1.5,"calendarScale":0.5,"romanScale":1.25}"#] {
+    try! ClockWidgetStore.writeSettings(raw, in: directory)
+    precondition(ClockWidgetStore.settings(in: directory) == SharedClockSettings(raw: raw))
+  }
+  do { try ClockWidgetStore.writeSettings("{}", in: nil); fatalError("Missing App Group must report failure") }
+  catch ClockWidgetStore.SettingsFailure.appGroupUnavailable {}
+  catch { fatalError("Unexpected error: \(error)") }
+  do { try ClockWidgetStore.writeSettings("[]", in: directory); fatalError("Non-object settings must fail") }
+  catch ClockWidgetStore.SettingsFailure.invalidPayload {}
+  catch { fatalError("Unexpected error: \(error)") }
   let date = Date(timeIntervalSince1970: 1712600460)
   let weather = SharedClockWeather(cityKey: custom.cityKey, temperature: 20, code: 2, isDay: true,
     fetchedAt: date, high: 25, low: 15)

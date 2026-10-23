@@ -24,18 +24,23 @@ struct ClockProvider: TimelineProvider {
   }
   func getTimeline(in context: Context, completion: @escaping (Timeline<ClockEntry>) -> Void) {
     Task {
-      let settings = ClockWidgetStore.settings()
-      var weather = ClockWidgetStore.weather(for: settings)
+      let requestedSettings = ClockWidgetStore.settings()
+      var weather = ClockWidgetStore.weather(for: requestedSettings)
       if weather == nil || Date().timeIntervalSince(weather?.fetchedAt ?? .distantPast) > 900 {
         let client = ClockWeatherClient.live()
         defer { client.session.invalidateAndCancel() }
-        if let fresh = try? await client.fetch(settings) {
+        if let fresh = try? await client.fetch(requestedSettings) {
           weather = fresh
           // 城市可能在请求期间被 App 更改；旧结果仅属于自己的城市，不能写成新城市天气。
           if ClockWidgetStore.settings().cityKey == fresh.cityKey {
             ClockWidgetStore.defaults?.set(fresh.encoded(), forKey: "widget.extensionWeather")
           }
         }
+      }
+      // 天气请求期间滑杆可能已变化：生成时间线前重读文件，禁止旧快照覆盖用户的新尺寸。
+      let settings = ClockWidgetStore.settings()
+      if settings.cityKey != requestedSettings.cityKey {
+        weather = ClockWidgetStore.weather(for: settings)
       }
       let dates = ClockTimelineSchedule.dates(from: Date())
       let entries = dates.map { ClockEntry(date: $0, settings: settings, weather: weather) }

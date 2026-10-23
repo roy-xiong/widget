@@ -88,6 +88,7 @@ class ClockController extends ChangeNotifier {
           active = visible;
           if (visible) {
             time.value = _now();
+            widgets?.schedule(settings);
             _startClock();
             if (snapshot == null || snapshot!.isStale(_now())) {
               unawaited(refreshWeather());

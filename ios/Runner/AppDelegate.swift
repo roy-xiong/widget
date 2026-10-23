@@ -22,6 +22,9 @@ import WidgetKit
     for key in ["settings", "weather"] {
       if let value = UserDefaults.standard.string(forKey: "widget.\(key)") {
         ClockWidgetStore.defaults?.set(value, forKey: "widget.\(key)")
+        if key == "settings" {
+          widgetFiles.async { try? ClockWidgetStore.writeSettings(value) }
+        }
       }
     }
     let preferences = FlutterMethodChannel(name: "com.xiongjian.widget/preferences", binaryMessenger: messenger)
@@ -35,31 +38,42 @@ import WidgetKit
           let key = args["key"] as? String, keys.contains(key),
           let value = args["value"] as? String, value.utf8.count <= 131072 {
           UserDefaults.standard.set(value, forKey: "widget.\(key)")
-          ClockWidgetStore.defaults?.set(value, forKey: "widget.\(key)")
-          self?.scheduleWidgetReload(); result(nil)
+          // 设置由 publishSettings 连同底图原子提交，不能在底图就绪之前提前请求重载。
+          if key == "weather" {
+            ClockWidgetStore.defaults?.set(value, forKey: "widget.\(key)")
+            self?.scheduleWidgetReload()
+          }
+          result(nil)
         } else { result(FlutterError(code: "BAD_ARGUMENT", message: "无效设置参数", details: nil)) }
       }
     }
     let widgets = FlutterMethodChannel(name: "com.xiongjian.widget/widgets", binaryMessenger: messenger)
     widgetChannel = widgets
     widgets.setMethodCallHandler { [weak self] call, result in
-      guard call.method == "publishDial", let args = call.arguments as? [String: Any],
-            let png = args["png"] as? FlutterStandardTypedData,
+      guard call.method == "publishSettings", let args = call.arguments as? [String: Any],
+            let raw = args["settings"] as? String, raw.utf8.count <= 131072,
             let scale = args["romanScale"] as? NSNumber, scale.doubleValue.isFinite,
-            png.data.count <= 1048576, png.data.starts(with: [137, 80, 78, 71, 13, 10, 26, 10]),
             let owner = self else {
+        result(FlutterError(code: "BAD_ARGUMENT", message: "无效小组件设置", details: nil)); return
+      }
+      let data = (args["png"] as? FlutterStandardTypedData)?.data
+      if args["png"] != nil && (data == nil || data!.count > 1048576 ||
+          !data!.starts(with: [137, 80, 78, 71, 13, 10, 26, 10])) {
         result(FlutterError(code: "BAD_ARGUMENT", message: "无效小组件底图", details: nil)); return
       }
-      let data = png.data
       owner.widgetFiles.async { [weak owner] in
-        guard let url = ClockWidgetStore.dialURL(scale: scale.doubleValue, moving: args["moving"] as? Bool ?? false) else {
+        guard let url = ClockWidgetStore.dialURL(scale: scale.doubleValue, moving: true) else {
           DispatchQueue.main.async { result(FlutterError(code: "APP_GROUP", message: "签名未启用 App Group", details: nil)) }; return
         }
         do {
-          try data.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+          if let data = data {
+            try data.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+          }
+          try ClockWidgetStore.writeSettings(raw)
+          ClockWidgetStore.defaults?.set(raw, forKey: "widget.settings")
           DispatchQueue.main.async { owner?.scheduleWidgetReload(); result(nil) }
         } catch {
-          DispatchQueue.main.async { result(FlutterError(code: "WIDGET_WRITE", message: "小组件底图保存失败", details: nil)) }
+          DispatchQueue.main.async { result(FlutterError(code: "WIDGET_WRITE", message: "小组件设置保存失败", details: nil)) }
         }
       }
     }

@@ -2,7 +2,7 @@ name: Render clock previews
 on:
   workflow_dispatch:
   push:
-    branches: [main, codex/widget-timeline-refresh]
+    branches: [main, codex/widget-artwork-sync]
     paths: ['lib/ui/clock_dial.dart', 'test/render_previews_test.dart', 'lib/ui/manila_clock.dart', 'lib/ui/flip_tile.dart', '.github/workflows/render-previews.yml']
 permissions:
   contents: write
@@ -19,6 +19,8 @@ jobs:
           cache: true
       - run: flutter pub get --enforce-lockfile
       - run: flutter test --no-pub test/render_previews_test.dart --dart-define=RENDER_PREVIEWS=true --reporter expanded
+      - name: Bundle canonical widget layers
+        run: python3 -c "import shutil; shutil.make_archive('build/previews/widget-artwork', 'zip', 'build/previews/widget-artwork')"
       - uses: actions/upload-artifact@v4
         with:
           name: clock-design-previews
@@ -27,4 +29,4 @@ jobs:
       - name: Publish review images
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "design-$GITHUB_RUN_ID" build/previews/*.png --target "$GITHUB_SHA" --prerelease --title '时钟外观审阅图' --notes '图像直接从正式表盘代码导出；机械表已接入确认的小月相与陀飞轮样式，马尼拉为半透明玻璃天气界面。'
+        run: gh release create "design-$GITHUB_RUN_ID" build/previews/*.png build/previews/widget-artwork.zip --target "$GITHUB_SHA" --prerelease --title '时钟外观审阅图' --notes '图像直接从正式表盘代码导出；附小组件复用的真实指针、固定框与正反摆轮图层。'

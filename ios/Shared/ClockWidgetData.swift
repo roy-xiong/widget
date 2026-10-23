@@ -115,8 +115,26 @@ enum ClockWidgetStore {
   static let appGroup = "group.com.xiongjian.widget"
   static var container: URL? { FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup) }
   static var defaults: UserDefaults? { container == nil ? nil : UserDefaults(suiteName: appGroup) }
-  static func settings() -> SharedClockSettings {
-    SharedClockSettings(raw: defaults?.string(forKey: "widget.settings"))
+  enum SettingsFailure: Error { case appGroupUnavailable, invalidPayload }
+
+  /** 每次读取已原子提交的文件，避免扩展进程保留 UserDefaults 的旧尺寸缓存。 */
+  static func settings(in directory: URL? = ClockWidgetStore.container) -> SharedClockSettings {
+    if let url = directory?.appendingPathComponent("clock-settings.json"),
+       let data = try? Data(contentsOf: url), data.count <= 131072,
+       let raw = String(data: data, encoding: .utf8) {
+      return SharedClockSettings(raw: raw)
+    }
+    return SharedClockSettings(raw: defaults?.string(forKey: "widget.settings"))
+  }
+
+  /** 调用方串行提交底图后再提交设置；只有完成此操作才可请求小组件重载。 */
+  static func writeSettings(_ raw: String, in directory: URL? = ClockWidgetStore.container) throws {
+    guard let data = raw.data(using: .utf8), data.count <= 131072,
+          (try? JSONSerialization.jsonObject(with: data)) is [String: Any] else {
+      throw SettingsFailure.invalidPayload
+    }
+    guard let directory = directory else { throw SettingsFailure.appGroupUnavailable }
+    try data.write(to: directory.appendingPathComponent("clock-settings.json"), options: .atomic)
   }
   static func weather(for settings: SharedClockSettings) -> SharedClockWeather? {
     ["widget.weather", "widget.extensionWeather"].compactMap { SharedClockWeather.decode(defaults?.string(forKey: $0)) }
