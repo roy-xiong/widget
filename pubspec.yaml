@@ -1,7 +1,7 @@
 name: desktop_clock
 description: '机械月相表盘与 Manila 翻页天气时钟。'
 publish_to: none
-version: 1.1.1+1
+version: 1.1.2+1
 environment:
   sdk: ^3.12.2
 dependencies:

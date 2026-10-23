@@ -4,10 +4,14 @@ import UIKit
 /** 框体、刻度使用 Flutter 原画笔底图；月相日历由时间线绘制，活动机械层单独由系统驱动。 */
 struct NativeMechanicalFace: View {
   let entry: ClockEntry
+  var renderDate: Date? = nil
+  var artwork: ClockMotionArtwork = .bundled
+  var dialImage: UIImage? = nil
   private var background: UIImage? {
-    if let path = ClockWidgetStore.dialURL(scale: entry.settings.romanScale, moving: ClockMotionRuntime.available)?.path,
+    if let image = dialImage { return image }
+    if let path = ClockWidgetStore.dialURL(scale: entry.settings.romanScale, moving: true)?.path,
        let image = UIImage(contentsOfFile: path) { return image }
-    if abs(entry.settings.romanScale - 1) < 0.001 { return UIImage(named: ClockMotionRuntime.available ? "MotionDial" : "DefaultDial") }
+    if abs(entry.settings.romanScale - 1) < 0.001 { return UIImage(named: "MotionDial") }
     return nil
   }
   var body: some View {
@@ -22,7 +26,7 @@ struct NativeMechanicalFace: View {
           drawMoon(&context)
           drawCalendar(&context)
         }
-        LiveMechanicalMotion(renderDate: ClockMotionRuntime.available ? nil : entry.date)
+        LiveMechanicalMotion(renderDate: renderDate ?? (ClockMotionRuntime.available ? nil : entry.date), artwork: artwork)
           .frame(width: min(geometry.size.width, geometry.size.height), height: min(geometry.size.width, geometry.size.height))
       }.frame(width: geometry.size.width, height: geometry.size.height)
     }

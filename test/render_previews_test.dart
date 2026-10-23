@@ -315,6 +315,22 @@ void main() {
           'samples': samples,
         }),
       );
+      // 扩展通过真实文件读到尺寸后，还必须把这些尺寸用到正式表盘；提供独立的底图对照。
+      for (final double scale in <double>[1, 1.5]) {
+        final ClockDialPainter scaled = ClockDialPainter(
+          time: reference,
+          moon: MoonPhase.atUtc(reference),
+          showHands: false,
+          showComplications: false,
+          showMechanism: false,
+          romanScale: scale,
+        );
+        await writeCanvas(
+          'dial-roman-${(scale * 1000).round()}',
+          (Canvas canvas) => scaled.paint(canvas, const Size(360, 360)),
+          asset: false,
+        );
+      }
       await File('build/previews/widget-motion-dial.png').copy(
         'ios/ClockWidgets/Assets.xcassets/MotionDial.imageset/MotionDial.png',
       );

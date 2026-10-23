@@ -3,6 +3,13 @@ import SwiftUI
 import WidgetKit
 import UIKit
 
+/** 探针只编译生产表盘，不包含带 @main 的 WidgetBundle；数据结构与正式 TimelineEntry 一致。 */
+struct ClockEntry {
+  let date: Date
+  let settings: SharedClockSettings
+  let weather: SharedClockWeather?
+}
+
 /** 云端模拟器真实运行时检测，不把源码包含字段或仅编译成功当成动态效果可用。 */
 @main
 struct WidgetMotionProbe {
@@ -80,6 +87,50 @@ struct WidgetMotionProbe {
       precondition(mean < 18, "Hand UI or tourbillon phase differs from App")
     }
     print("PASS: production widget hands, fixed rim and 8 Hz balance match App reference frames")
+    try validateComponentSizes(directory: directory, output: output, artwork: artwork)
+  }
+
+  /** 从正式共享文件读取设置，再渲染正式小组件表盘，验证三个滑杆各自能改变其对应区域。 */
+  @MainActor static func validateComponentSizes(directory: URL, output: URL, artwork: ClockMotionArtwork) throws {
+    let shared = output.appendingPathComponent("shared-settings-test")
+    try FileManager.default.createDirectory(at: shared, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: shared) }
+    var baseline: [UInt8]?
+    let date = Date(timeIntervalSince1970: 1767262118.141)
+    let cases: [(String, String, String, CGRect?)] = [
+      ("baseline", "{}", "dial-roman-1000.png", nil),
+      ("moon", #"{"moonScale":1.5}"#, "dial-roman-1000.png", CGRect(x: 115, y: 72, width: 130, height: 80)),
+      ("calendar", #"{"calendarScale":1.5}"#, "dial-roman-1000.png", CGRect(x: 170, y: 145, width: 145, height: 70)),
+      ("roman", #"{"romanScale":1.5}"#, "dial-roman-1500.png", CGRect(x: 145, y: 30, width: 70, height: 45)),
+    ]
+    for (name, raw, dialName, region) in cases {
+      try ClockWidgetStore.writeSettings(raw, in: shared)
+      let settings = ClockWidgetStore.settings(in: shared)
+      precondition(settings == SharedClockSettings(raw: raw))
+      let entry = ClockEntry(date: date, settings: settings, weather: nil)
+      let dial = UIImage(contentsOfFile: directory.appendingPathComponent(dialName).path)
+      precondition(dial != nil)
+      let view = NativeMechanicalFace(entry: entry, renderDate: date, artwork: artwork, dialImage: dial)
+        .frame(width: 360, height: 360)
+      let renderer = ImageRenderer(content: view); renderer.scale = 2
+      guard let image = renderer.uiImage, let cgImage = image.cgImage, let png = image.pngData() else {
+        fatalError("Cannot render component size case")
+      }
+      try png.write(to: output.appendingPathComponent("component-" + name + ".png"))
+      let bytes = pixels(cgImage)
+      if let baseline = baseline, let region = region {
+        var changed = 0
+        for y in Int(region.minY * 2)..<Int(region.maxY * 2) {
+          for x in Int(region.minX * 2)..<Int(region.maxX * 2) {
+            let pixel = (y * cgImage.width + x) * 4
+            if (0..<4).contains(where: { abs(Int(bytes[pixel + $0]) - Int(baseline[pixel + $0])) > 16 }) { changed += 1 }
+          }
+        }
+        print("COMPONENT \(name): changed pixels in its own region=\(changed)")
+        precondition(changed > 200, "Component slider has no effect in the production widget")
+      } else { baseline = bytes }
+    }
+    print("PASS: moon/calendar/Roman sizes survive file sharing and change production widget pixels")
   }
 
   /** 统一 PNG/SwiftUI 的颜色通道和像素坐标，避免图片内部 BGRA 排列造成误判。 */
