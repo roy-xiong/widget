@@ -27,6 +27,7 @@
 
         C20000000000000000000001 /* ClockHandRotationEffect.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20000000000000000000002; };
         C20000000000000000000003 /* ClockMotion.swift in Sources */ = {isa = PBXBuildFile; fileRef = C20000000000000000000004; };
+        C20000000000000000000006 /* ClockHandKit license in Resources */ = {isa = PBXBuildFile; fileRef = C20000000000000000000005; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -88,6 +89,7 @@
 
         C20000000000000000000002 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../third_party/ClockHandKit/ClockHandRotationEffect.swift; sourceTree = SOURCE_ROOT; };
         C20000000000000000000004 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClockMotion.swift; sourceTree = "<group>"; };
+        C20000000000000000000005 = {isa = PBXFileReference; lastKnownFileType = text; path = ../third_party/ClockHandKit/LICENSE; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -161,7 +163,7 @@
 			sourceTree = "<group>";
 		};
 
-        C10000000000000000000040 = {isa = PBXGroup; children = (C20000000000000000000002, C20000000000000000000004, C10000000000000000000021, C10000000000000000000022, C10000000000000000000023, C10000000000000000000026, C10000000000000000000027, C10000000000000000000028, ); path = ClockWidgets; sourceTree = "<group>"; };
+        C10000000000000000000040 = {isa = PBXGroup; children = (C20000000000000000000005, C20000000000000000000002, C20000000000000000000004, C10000000000000000000021, C10000000000000000000022, C10000000000000000000023, C10000000000000000000026, C10000000000000000000027, C10000000000000000000028, ); path = ClockWidgets; sourceTree = "<group>"; };
         C10000000000000000000041 = {isa = PBXGroup; children = (C10000000000000000000024, ); path = Shared; sourceTree = "<group>"; };
 
 /* End PBXGroup section */
@@ -279,7 +281,7 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 
-        C10000000000000000000034 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (C10000000000000000000017, ); runOnlyForDeploymentPostprocessing = 0; };
+        C10000000000000000000034 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (C20000000000000000000006, C10000000000000000000017, ); runOnlyForDeploymentPostprocessing = 0; };
 
 /* End PBXResourcesBuildPhase section */
 
