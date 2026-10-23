@@ -57,9 +57,11 @@ import WidgetKit
         result(FlutterError(code: "BAD_ARGUMENT", message: "无效小组件设置", details: nil)); return
       }
       let data = (args["png"] as? FlutterStandardTypedData)?.data
-      if args["png"] != nil && (data == nil || data!.count > 1048576 ||
-          !data!.starts(with: [137, 80, 78, 71, 13, 10, 26, 10])) {
-        result(FlutterError(code: "BAD_ARGUMENT", message: "无效小组件底图", details: nil)); return
+      if args["png"] != nil {
+        guard let data = data, data.count <= 1048576,
+              data.starts(with: [137, 80, 78, 71, 13, 10, 26, 10]) else {
+          result(FlutterError(code: "BAD_ARGUMENT", message: "无效小组件底图", details: nil)); return
+        }
       }
       owner.widgetFiles.async { [weak owner] in
         guard let url = ClockWidgetStore.dialURL(scale: scale.doubleValue, moving: true) else {

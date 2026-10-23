@@ -134,7 +134,11 @@ enum ClockWidgetStore {
       throw SettingsFailure.invalidPayload
     }
     guard let directory = directory else { throw SettingsFailure.appGroupUnavailable }
-    try data.write(to: directory.appendingPathComponent("clock-settings.json"), options: .atomic)
+    var options: Data.WritingOptions = .atomic
+    #if os(iOS)
+    options.insert(.completeFileProtectionUntilFirstUserAuthentication)
+    #endif
+    try data.write(to: directory.appendingPathComponent("clock-settings.json"), options: options)
   }
   static func weather(for settings: SharedClockSettings) -> SharedClockWeather? {
     ["widget.weather", "widget.extensionWeather"].compactMap { SharedClockWeather.decode(defaults?.string(forKey: $0)) }

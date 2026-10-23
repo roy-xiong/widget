@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:desktop_clock/domain/clock_settings.dart';
 import 'package:desktop_clock/platform/widget_sync_service.dart';
@@ -52,4 +53,3 @@ void main() {
     expect(published.length, 4);
   });
 }
-import 'dart:async';
