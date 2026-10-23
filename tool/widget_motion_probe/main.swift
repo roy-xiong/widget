@@ -7,6 +7,11 @@ import WidgetKit
 struct WidgetMotionProbe {
   @MainActor static func main() throws {
     print("Runtime:", ProcessInfo.processInfo.operatingSystemVersionString)
+    // import 不一定产生运行时链接引用；真实扩展由 WidgetKit 宿主加载，探针显式加载同一框架。
+    print("WidgetKit loaded:", String(reflecting: type(of: WidgetCenter.shared)))
+    if let type = _typeByName("9WidgetKit24_ClockHandRotationEffectV") {
+      print("Resolved effect type:", String(reflecting: type))
+    }
     let periods: [(ClockHandPeriod, Double)] = [(.hourHand, 43200), (.minuteHand, 3600), (.secondHand, 60), (.custom(60), 60)]
     for (period, duration) in periods {
       let bytes = try JSONEncoder().encode(_ClockHandData(period: period.duration, timeZone: .current, anchor: .center))

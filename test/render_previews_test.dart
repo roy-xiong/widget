@@ -205,6 +205,9 @@ void main() {
         await File(
           'ios/ClockWidgets/Assets.xcassets/MotionTourbillon.imageset/MotionTourbillon.png',
         ).writeAsBytes(bytes.buffer.asUint8List());
+        await File(
+          'build/previews/widget-motion-tourbillon.png',
+        ).writeAsBytes(bytes.buffer.asUint8List());
         await File('build/previews/widget-motion-dial.png').copy(
           'ios/ClockWidgets/Assets.xcassets/MotionDial.imageset/MotionDial.png',
         );
