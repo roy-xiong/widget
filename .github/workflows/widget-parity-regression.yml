@@ -1,0 +1,21 @@
+name: Verify widget settings parity
+on:
+  push:
+    branches: [main, codex/widget-artwork-sync]
+    paths: ['lib/platform/widget_sync_service.dart', 'test/widget_sync_test.dart', '.github/workflows/widget-parity-regression.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  settings-sync:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.4'
+          channel: stable
+          cache: true
+      - run: flutter pub get --enforce-lockfile
+      - run: flutter test --no-pub test/widget_sync_test.dart --reporter expanded
