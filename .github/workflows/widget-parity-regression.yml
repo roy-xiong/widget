@@ -12,10 +12,24 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.44.4'
           channel: stable
           cache: true
       - run: flutter pub get --enforce-lockfile
+      - name: Confirm the same regression fails with the original publisher
+        shell: bash
+        run: |
+          set -euo pipefail
+          clock_source=lib/platform/widget_sync_service.dart
+          cp "$clock_source" "$RUNNER_TEMP/widget-sync-fixed.dart"
+          trap 'cp "$RUNNER_TEMP/widget-sync-fixed.dart" "$clock_source"' EXIT
+          git show 9499b68c420a69bbbe31a9ac2f84a47bad715424:"$clock_source" > "$clock_source"
+          if flutter test --no-pub test/widget_sync_test.dart --reporter expanded; then
+            echo 'Regression must fail on the original publisher'
+            exit 1
+          fi
       - run: flutter test --no-pub test/widget_sync_test.dart --reporter expanded
