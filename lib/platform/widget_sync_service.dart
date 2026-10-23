@@ -45,6 +45,7 @@ class WidgetSyncService {
           moon: MoonPhase.atUtc(date.toUtc()),
           showHands: false,
           showComplications: false,
+          showMechanism: false,
           romanScale: value.romanScale,
         ).paint(canvas, const Size(360, 360));
         final ui.Picture picture = recorder.endRecording();
@@ -58,6 +59,7 @@ class WidgetSyncService {
           await _channel.invokeMethod<void>('publishDial', <String, Object>{
             'png': bytes.buffer.asUint8List(),
             'romanScale': value.romanScale,
+            'moving': true,
           });
           _lastRoman = value.romanScale;
           if (!_disposed) onStatus?.call(null);

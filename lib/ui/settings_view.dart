@@ -187,7 +187,7 @@ class _SettingsViewState extends State<SettingsView> {
                   ),
                   const SizedBox(height: 6),
                   const Text(
-                    '长按主屏幕 → 编辑 → 添加小组件 → 桌面时钟。\n可分别添加机械表或马尼拉，中小两种尺寸。设置会同步到小组件；数字时间实时更新，机械指针由系统定时刷新。',
+                    '长按主屏幕 → 编辑 → 添加小组件 → 桌面时钟。\n可分别添加机械表或马尼拉，中小两种尺寸。设置会同步到小组件。机械表实验版使用系统内部旋转效果，时分秒针和陀飞轮实时转动；系统更新可能影响兼容性。',
                     style: TextStyle(
                       fontSize: 12,
                       color: Color(0xFFB0B8C6),

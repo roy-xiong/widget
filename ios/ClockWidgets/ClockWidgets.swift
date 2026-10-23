@@ -39,7 +39,8 @@ struct ClockProvider: TimelineProvider {
       }
       let dates = ClockTimelineSchedule.dates(from: Date())
       let entries = dates.map { ClockEntry(date: $0, settings: settings, weather: weather) }
-      completion(Timeline(entries: entries, policy: .atEnd))
+      // 天气按半小时请求更新，日历/月相保留 24 小时备用节点；两者均不驱动秒针。
+      completion(Timeline(entries: entries, policy: .after(Date().addingTimeInterval(1800))))
     }
   }
 }
@@ -51,7 +52,7 @@ struct MechanicalClockWidget: Widget {
         .containerBackground(for: .widget) { Color(red: 0.06, green: 0.09, blue: 0.12) }
     }
     .configurationDisplayName("机械月相时钟")
-    .description("月相、星期日历与机械表盘，数字时间由系统实时更新。指针按系统时间线刷新。")
+    .description("实验动态表盘：系统驱动时、分、秒针和陀飞轮，保留月相与星期日历。")
     .supportedFamilies([.systemSmall, .systemMedium])
     .contentMarginsDisabled()
   }
@@ -104,13 +105,17 @@ struct MechanicalWidgetView: View {
       HStack(spacing: 8) {
         VStack(spacing: 0) {
           NativeMechanicalFace(entry: entry).frame(width: diameter, height: diameter)
-            .accessibilityLabel("机械表盘，指针按系统时间线更新")
+            .accessibilityLabel("机械表盘，系统实时驱动指针")
         }
         if medium {
           VStack(alignment: .leading, spacing: 6) {
             Text(entry.date, format: .dateTime.month().day().weekday()).font(.system(size: 11)).foregroundStyle(.white.opacity(0.8))
             WidgetWeather(entry: entry)
           }.frame(maxWidth: .infinity, alignment: .leading)
+        }
+      }.overlay(alignment: .bottom) {
+        if !ClockMotionRuntime.available {
+          Text("动态效果不可用").font(.system(size: 9)).foregroundStyle(.orange)
         }
       }.padding(.horizontal, 5).frame(width: geometry.size.width, height: geometry.size.height)
     }

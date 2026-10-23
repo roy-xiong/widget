@@ -40,7 +40,7 @@ func validateModels() {
   for timestamp in [0.0, 1712600460, 1792713599, 1792713600] {
     let now = Date(timeIntervalSince1970: timestamp)
     let dates = ClockTimelineSchedule.dates(from: now)
-    precondition(dates.count == 13 && dates.first == now)
+    precondition(dates.count == 290 && dates.first == now)
     precondition(dates[1] > now)
     for index in 2..<dates.count { precondition(dates[index].timeIntervalSince(dates[index - 1]) == 300) }
   }

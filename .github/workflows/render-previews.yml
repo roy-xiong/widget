@@ -2,7 +2,7 @@ name: Render clock previews
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, codex/widget-timeline-refresh]
     paths: ['lib/ui/clock_dial.dart', 'test/render_previews_test.dart', 'lib/ui/manila_clock.dart', 'lib/ui/flip_tile.dart', '.github/workflows/render-previews.yml']
 permissions:
   contents: write

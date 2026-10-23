@@ -164,6 +164,55 @@ void main() {
         'ios/ClockWidgets/Assets.xcassets/DefaultDial.imageset/DefaultDial.png',
       );
     });
+    await capture(
+      'widget-motion-dial',
+      Center(
+        child: SizedBox(
+          width: 360,
+          height: 360,
+          child: CustomPaint(
+            painter: ClockDialPainter(
+              time: instant,
+              moon: MoonPhase.atUtc(instant.toUtc()),
+              showHands: false,
+              showComplications: false,
+              showMechanism: false,
+            ),
+          ),
+        ),
+      ),
+      const Size(360, 360),
+    );
+    await tester.runAsync(() async {
+      final ui.PictureRecorder recorder = ui.PictureRecorder();
+      const double radius = 165.44;
+      const double edge = radius * .49;
+      final Canvas canvas = Canvas(recorder)
+        ..scale(256 / edge)
+        ..translate(-(180 - edge / 2), -(180 + radius * .45 - edge / 2));
+      final DateTime reference = DateTime.utc(2026, 1, 1);
+      ClockDialPainter(
+        time: reference,
+        moon: MoonPhase.atUtc(reference),
+      ).paintTourbillon(canvas, const Size(360, 360), reference);
+      final ui.Picture picture = recorder.endRecording();
+      final ui.Image image = await picture.toImage(256, 256);
+      try {
+        final ByteData? bytes = await image.toByteData(
+          format: ui.ImageByteFormat.png,
+        );
+        if (bytes == null) throw StateError('Missing tourbillon PNG');
+        await File(
+          'ios/ClockWidgets/Assets.xcassets/MotionTourbillon.imageset/MotionTourbillon.png',
+        ).writeAsBytes(bytes.buffer.asUint8List());
+        await File('build/previews/widget-motion-dial.png').copy(
+          'ios/ClockWidgets/Assets.xcassets/MotionDial.imageset/MotionDial.png',
+        );
+      } finally {
+        image.dispose();
+        picture.dispose();
+      }
+    });
     await tester.pumpWidget(const SizedBox());
   });
 }

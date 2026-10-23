@@ -122,9 +122,9 @@ enum ClockWidgetStore {
     ["widget.weather", "widget.extensionWeather"].compactMap { SharedClockWeather.decode(defaults?.string(forKey: $0)) }
       .filter { $0.cityKey == settings.cityKey }.max { $0.fetchedAt < $1.fetchedAt }
   }
-  static func dialURL(scale: Double) -> URL? {
+  static func dialURL(scale: Double, moving: Bool = false) -> URL? {
     guard scale.isFinite else { return nil }
-    return container?.appendingPathComponent("dial-\(Int((min(1.5, max(0.5, scale)) * 1000).rounded())).png")
+    return container?.appendingPathComponent("\(moving ? "motion-dial" : "dial")-\(Int((min(1.5, max(0.5, scale)) * 1000).rounded())).png")
   }
 }
 
@@ -132,6 +132,7 @@ enum ClockWidgetStore {
 enum ClockTimelineSchedule {
   static func dates(from now: Date) -> [Date] {
     let start = floor(now.timeIntervalSince1970 / 300) * 300
-    return [now] + (1...12).map { Date(timeIntervalSince1970: start + Double($0) * 300) }
+    // 预留整天节点。系统延迟重载时日历/月相仍有后续值，指针动画独立由系统驱动。
+    return [now] + (1...289).map { Date(timeIntervalSince1970: start + Double($0) * 300) }
   }
 }

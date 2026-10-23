@@ -52,7 +52,7 @@ import WidgetKit
       }
       let data = png.data
       owner.widgetFiles.async { [weak owner] in
-        guard let url = ClockWidgetStore.dialURL(scale: scale.doubleValue) else {
+        guard let url = ClockWidgetStore.dialURL(scale: scale.doubleValue, moving: args["moving"] as? Bool ?? false) else {
           DispatchQueue.main.async { result(FlutterError(code: "APP_GROUP", message: "签名未启用 App Group", details: nil)) }; return
         }
         do {

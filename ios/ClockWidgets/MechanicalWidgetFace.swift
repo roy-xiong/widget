@@ -5,9 +5,9 @@ import UIKit
 struct NativeMechanicalFace: View {
   let entry: ClockEntry
   private var background: UIImage? {
-    if let path = ClockWidgetStore.dialURL(scale: entry.settings.romanScale)?.path,
+    if let path = ClockWidgetStore.dialURL(scale: entry.settings.romanScale, moving: ClockMotionRuntime.available)?.path,
        let image = UIImage(contentsOfFile: path) { return image }
-    if abs(entry.settings.romanScale - 1) < 0.001 { return UIImage(named: "DefaultDial") }
+    if abs(entry.settings.romanScale - 1) < 0.001 { return UIImage(named: ClockMotionRuntime.available ? "MotionDial" : "DefaultDial") }
     return nil
   }
   var body: some View {
@@ -21,7 +21,10 @@ struct NativeMechanicalFace: View {
           context.scaleBy(x: side / 360, y: side / 360)
           drawMoon(&context)
           drawCalendar(&context)
-          drawHands(&context)
+          if !ClockMotionRuntime.available { drawHands(&context) }
+        }
+        if ClockMotionRuntime.available {
+          LiveMechanicalMotion().frame(width: min(geometry.size.width, geometry.size.height), height: min(geometry.size.width, geometry.size.height))
         }
       }.frame(width: geometry.size.width, height: geometry.size.height)
     }
