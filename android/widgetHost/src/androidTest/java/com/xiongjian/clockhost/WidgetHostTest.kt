@@ -64,6 +64,11 @@ class WidgetHostTest {
                 return count
             }
             await { onHost { it.views[true]?.findViewById<ViewFlipper>(id("balance_flipper")) != null && it.views[false]?.findViewById<TextClock>(id("clock_minute_text")) != null } }
+            // XML 初始布局存在并不代表 Provider 已经提交正式底图；首次添加也必须独立完成刷新。
+            await(20000) { onHost {
+                val dial = it.views[true]?.findViewById<ImageView>(id("clock_face"))?.drawable as? BitmapDrawable
+                dial?.bitmap?.width == 512 && it.views[false]?.findViewById<ImageView>(id("manila_background"))?.drawable != null
+            } }
             Thread.sleep(800)
             val initial = onHost { it.views[true]!!.findViewById<ViewFlipper>(id("balance_flipper")).displayedChild }
             await(1500) { onHost { it.views[true]!!.findViewById<ViewFlipper>(id("balance_flipper")).displayedChild != initial } }
