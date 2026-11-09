@@ -7,13 +7,24 @@ import 'package:flutter/services.dart';
 import '../domain/clock_settings.dart';
 import '../ui/clock_dial.dart';
 
-/// iOS 小组件底图同步。滑杆连续变化先合并，绘图进行期间仅保留最后一次设置。
+/// iOS / Android 小组件底图同步。连续滑杆变化合并，绘图期间仅保留最后一次设置。
 /// 设置与可选底图一次提交，原生端写盘成功后才刷新；只缓存 PNG，绝不跳过月相/日历设置。
 class WidgetSyncService {
   static const MethodChannel _channel = MethodChannel(
     'com.xiongjian.widget/widgets',
   );
-  bool get supported => !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS;
+  bool get supported =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.iOS ||
+          defaultTargetPlatform == TargetPlatform.android);
+
+  /// 用户在前台明确开启 Android 动态模式；原生负责通知和服务生命周期。
+  Future<void> androidAnimation(String action) async {
+    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+      await _channel.invokeMethod<void>(action);
+    }
+  }
+
   Timer? _timer;
   ClockSettings? _pending;
   bool _running = false, _disposed = false;

@@ -9,6 +9,6 @@
     "java": "17",
     "minSdk": 24
   },
-  "platforms": ["macos", "ios"],
-  "note": "首版 Apple 两端不使用 Android NDK；记录 BBK 基线供未来 Android 工程沿用。"
+  "platforms": ["macos", "ios", "android"],
+  "note": "Android 沿用 BBK 基线；Android 12 桌面动态小组件使用系统宿主与用户开启的前台服务。"
 }

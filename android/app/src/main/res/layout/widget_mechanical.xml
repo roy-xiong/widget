@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent" android:layout_height="match_parent">
+    <FrameLayout android:id="@+id/clock_stage" android:layout_width="180dp" android:layout_height="180dp" android:layout_gravity="center" android:contentDescription="机械月相时钟，点击打开设置">
+        <ImageView android:id="@+id/clock_face" android:layout_width="match_parent" android:layout_height="match_parent" android:src="@drawable/clock_dial" android:scaleType="fitXY" android:contentDescription="月相与星期日历" />
+        <FrameLayout android:id="@+id/mechanism_container" android:layout_width="40.5328dp" android:layout_height="40.5328dp" android:layout_marginLeft="69.7336dp" android:layout_marginTop="106.9576dp">
+            <ViewFlipper android:id="@+id/balance_flipper" android:layout_width="match_parent" android:layout_height="match_parent" android:autoStart="true" android:flipInterval="125" android:animateFirstView="false" android:contentDescription="陀飞轮摆轮往复">
+                <AnalogClock android:id="@+id/tourbillon_positive" android:layout_width="match_parent" android:layout_height="match_parent" android:dial="@drawable/mechanism_empty" android:hand_hour="@drawable/mechanism_empty" android:hand_minute="@drawable/mechanism_empty" android:hand_second="@drawable/mechanism_positive" tools:targetApi="31" />
+                <AnalogClock android:id="@+id/tourbillon_negative" android:layout_width="match_parent" android:layout_height="match_parent" android:dial="@drawable/mechanism_empty" android:hand_hour="@drawable/mechanism_empty" android:hand_minute="@drawable/mechanism_empty" android:hand_second="@drawable/mechanism_negative" tools:targetApi="31" />
+            </ViewFlipper>
+            <ImageView android:id="@+id/legacy_mechanism" android:layout_width="match_parent" android:layout_height="match_parent" android:src="@drawable/tourbillon_positive" android:visibility="gone" android:contentDescription="陀飞轮" />
+        </FrameLayout>
+        <AnalogClock android:id="@+id/clock_hands" android:layout_width="match_parent" android:layout_height="match_parent" android:dial="@drawable/clock_empty" android:hand_hour="@drawable/clock_hour" android:hand_minute="@drawable/clock_minute" android:hand_second="@drawable/clock_second" tools:targetApi="31" />
+        <ImageView android:layout_width="match_parent" android:layout_height="match_parent" android:src="@drawable/motion_pin" android:scaleType="fitXY" android:importantForAccessibility="no" />
+    </FrameLayout>
+</FrameLayout>

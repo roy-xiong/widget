@@ -1,10 +1,16 @@
 name: Android widget APK
 on:
   push:
-    branches: [codex/android-clock-widgets]
+    branches: [main, codex/android-clock-widgets]
+    paths: ['android/**', 'lib/**', 'test/**', 'tool/export_android_artwork.py', 'tool/package_android.sh', 'pubspec.*', '.github/workflows/android.yml']
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: clock-android-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  PUB_HOSTED_URL: https://pub.dev
 jobs:
   verify:
     runs-on: ubuntu-24.04
@@ -17,4 +23,114 @@ jobs:
           channel: stable
           cache: true
       - run: flutter pub get --enforce-lockfile
-      - run: flutter test --no-pub test/android_widget_sync_test.dart --reporter expanded
+      - run: dart format --output=none --set-exit-if-changed lib test
+      - run: flutter analyze --no-pub
+      - run: flutter test --no-pub --reporter expanded
+  android:
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+          cache-dependency-path: 'android/**/*.gradle*'
+      - uses: android-actions/setup-android@v3
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.4'
+          channel: stable
+          cache: true
+      - name: Restore stable test APK signing
+        env:
+          CLOCK_SIGNING_B64: ${{ secrets.ANDROID_TEST_KEYSTORE }}
+        run: |
+          test -n "$CLOCK_SIGNING_B64"
+          mkdir -p "$HOME/.android"
+          printf '%s' "$CLOCK_SIGNING_B64" | base64 --decode > "$HOME/.android/debug.keystore"
+          chmod 600 "$HOME/.android/debug.keystore"
+      - name: Install pinned NDK and export clock artwork
+        run: |
+          sdkmanager 'ndk;27.2.12479018'
+          python3 tool/export_android_artwork.py
+          flutter pub get --enforce-lockfile
+      - name: Build installable Release APK and native verification APKs
+        shell: bash
+        run: |
+          set -euo pipefail
+          clock_build=$((1000 + $(git rev-list --count HEAD)))
+          flutter build apk --release --no-pub --build-number="$clock_build"
+          cd android
+          ./gradlew :app:testDebugUnitTest :app:assembleDebug :widgetHost:assembleDebug :widgetHost:assembleDebugAndroidTest
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Verify real Android 12 AppWidgetHost
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 31
+          target: google_apis
+          arch: x86_64
+          profile: pixel_4
+          disable-animations: false
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: |
+            adb install -r build/app/outputs/apk/debug/app-debug.apk
+            adb install -r build/widgetHost/outputs/apk/debug/widgetHost-debug.apk
+            adb install -r build/widgetHost/outputs/apk/androidTest/debug/widgetHost-debug-androidTest.apk
+            adb shell appwidget grantbind --package com.xiongjian.clockhost --user 0
+            adb shell input keyevent 82
+            mkdir -p build/android-qa
+            adb shell am instrument -w com.xiongjian.clockhost.test/androidx.test.runner.AndroidJUnitRunner | tee build/android-qa/instrumentation.txt
+            adb pull /sdcard/Android/data/com.xiongjian.clockhost/files/qa build/android-qa/
+            adb logcat -d -s AndroidRuntime:E ClockWidget:E > build/android-qa/runtime-errors.txt
+            grep -q 'OK (1 test)' build/android-qa/instrumentation.txt
+      - name: Package and verify Android artifacts
+        run: bash tool/package_android.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: android-widget-qa
+          path: |
+            build/android-qa/
+            build/app/reports/tests/
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        with:
+          name: widget-android
+          path: dist/
+          compression-level: 0
+          if-no-files-found: error
+  release:
+    needs: android
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: widget-android
+          path: dist
+      - name: Publish APK after real-host verification
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          cat > "$RUNNER_TEMP/android-notes.md" <<'NOTES'
+          Android 12 动态桌面小组件实验版。
+
+          - 机械月相、马尼拉天气两种小组件，支持桌面调整大小。
+          - 机械表复用 App 指针及陀飞轮图层，系统走针、摆轮往复。
+          - 在 App 设置中开启动态模式后，通过常驻通知服务触发整分钟 640ms 三维翻页；熄屏暂停。
+          - 月相、星期日历、罗马数字三个尺寸和天气城市同步；离线显示天气缓存。
+          - 已在云端 Android 12 独立 AppWidgetHost 中验证；厂商自带桌面的实际表现仍需安装验证。
+          - 通用 Release 测试 APK，固定测试签名，附 SHA-256 和宿主验证截图。
+          NOTES
+          gh release create "android-$GITHUB_RUN_ID" dist/* --target "$GITHUB_SHA" --prerelease --title '桌面时钟 1.2.0 Android 动态小组件实验版' --notes-file "$RUNNER_TEMP/android-notes.md"

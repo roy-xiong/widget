@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent">
+    <FrameLayout android:id="@+id/manila_stage" android:layout_width="180dp" android:layout_height="125dp" android:layout_gravity="center" android:contentDescription="马尼拉天气时钟，点击打开设置">
+        <ImageView android:id="@+id/manila_background" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:contentDescription="天气城市及日期" />
+        <TextClock android:id="@+id/clock_hour_text" android:layout_width="71dp" android:layout_height="82dp" android:layout_marginLeft="10dp" android:format12Hour="HH" android:format24Hour="HH" android:textSize="69.5dp" android:textColor="#232627" android:fontFamily="sans-serif-light" android:textScaleX="0.78" android:includeFontPadding="false" android:gravity="center" android:maxLines="1" />
+        <TextClock android:id="@+id/clock_minute_text" android:layout_width="71dp" android:layout_height="82dp" android:layout_marginLeft="99dp" android:format12Hour="mm" android:format24Hour="mm" android:textSize="69.5dp" android:textColor="#232627" android:fontFamily="sans-serif-light" android:textScaleX="0.78" android:includeFontPadding="false" android:gravity="center" android:maxLines="1" />
+        <ImageView android:id="@+id/flip_overlay" android:layout_width="match_parent" android:layout_height="match_parent" android:scaleType="fitXY" android:visibility="gone" android:contentDescription="时间翻页中" />
+    </FrameLayout>
+</FrameLayout>

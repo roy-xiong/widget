@@ -1,0 +1,1 @@
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android"><item android:width="360dp" android:height="360dp" android:drawable="@drawable/motion_minute"/></layer-list>

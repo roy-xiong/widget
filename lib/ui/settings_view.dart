@@ -196,6 +196,43 @@ class _SettingsViewState extends State<SettingsView> {
                   ),
                   const SizedBox(height: 16),
                 ],
+                if (Theme.of(context).platform ==
+                    TargetPlatform.android) ...<Widget>[
+                  const Text(
+                    'Android 桌面小组件',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    '长按桌面空白处 → 小组件 → 桌面时钟。可添加机械月相或马尼拉，两种都能调整大小。\n三个组件尺寸会同步到所有机械表。开启动态模式后保留常驻通知，亮屏解锁时整分钟三维翻页；熄屏暂停。',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Color(0xFFB0B8C6),
+                      height: 1.5,
+                    ),
+                  ),
+                  Wrap(
+                    spacing: 8,
+                    children: <Widget>[
+                      FilledButton.icon(
+                        onPressed: () =>
+                            unawaited(_animation('startAnimations')),
+                        icon: const Icon(Icons.play_arrow),
+                        label: const Text('开启动态模式'),
+                      ),
+                      OutlinedButton(
+                        onPressed: () =>
+                            unawaited(_animation('stopAnimations')),
+                        child: const Text('停止动态模式'),
+                      ),
+                      TextButton(
+                        onPressed: () => unawaited(_animation('previewFlip')),
+                        child: const Text('预览一次翻页'),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
                 Text(
                   '天气城市 · ${settings.city.name}',
                   style: Theme.of(context).textTheme.titleSmall,
@@ -291,6 +328,24 @@ class _SettingsViewState extends State<SettingsView> {
         ],
       ),
     );
+  }
+
+  /// 通道失败只更新仍然附着的页面，不让原生服务异常冒泡成未处理 Future。
+  Future<void> _animation(String action) async {
+    try {
+      await widget.controller.widgets?.androidAnimation(action);
+      if (mounted) {
+        ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+          SnackBar(
+            content: Text(
+              action == 'stopAnimations' ? '动态模式已停止' : '动态模式已开启，可返回桌面查看',
+            ),
+          ),
+        );
+      }
+    } catch (_) {
+      if (mounted) setState(() => _message = '动态模式启动失败，请在 App 前台重试');
+    }
   }
 
   /// 50%～150% 以默认布局为基准，滑动时即时预览并沿用 Controller 的有序持久化。

@@ -160,4 +160,4 @@ jobs:
           - iOS IPA 未签名，需要自行签名安装；macOS 为 ad-hoc 签名测试包，未公证。
           - 附 SHA-256 校验文件。Flutter 3.44.4 / Dart 3.12.2。
           NOTES
-          gh release create "preview-$GITHUB_RUN_ID" dist/* --target "$GITHUB_SHA" --prerelease --title "桌面时钟 1.1.2 实验版 · Build $CLOCK_BUILD" --notes-file "$RUNNER_TEMP/release-notes.md"
+          gh release create "preview-$GITHUB_RUN_ID" dist/* --target "$GITHUB_SHA" --prerelease --title "桌面时钟 1.2.0 实验版 · Build $CLOCK_BUILD" --notes-file "$RUNNER_TEMP/release-notes.md"
