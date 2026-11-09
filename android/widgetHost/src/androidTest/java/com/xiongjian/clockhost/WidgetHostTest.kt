@@ -3,6 +3,8 @@ package com.xiongjian.clockhost
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.drawable.BitmapDrawable
 import android.view.View
 import android.widget.ViewFlipper
 import android.widget.ImageView
@@ -46,14 +48,30 @@ class WidgetHostTest {
                 context.startActivity(Intent().setClassName("com.xiongjian.widget", "com.xiongjian.widget.WidgetProbeActivity")
                     .setFlags(Intent.FLAG_ACTIVITY_NEW_TASK).putExtra("command", name).putExtra("settings", raw))
             }
+            fun face(): Bitmap = onHost { activity ->
+                val drawable = activity.views[true]!!.findViewById<ImageView>(id("clock_face")).drawable as BitmapDrawable
+                drawable.bitmap.copy(Bitmap.Config.ARGB_8888, false)
+            }
+            fun hands(): Bitmap = onHost { activity ->
+                val view = activity.views[true]!!.findViewById<View>(id("clock_hands"))
+                Bitmap.createBitmap(view.width, view.height, Bitmap.Config.ARGB_8888).also { view.draw(Canvas(it)) }
+            }
+            fun changed(a: Bitmap, b: Bitmap, left: Int, top: Int, right: Int, bottom: Int): Int {
+                var count = 0
+                for (y in top * a.height / 360 until bottom * a.height / 360) for (x in left * a.width / 360 until right * a.width / 360) {
+                    if (a.getPixel(x, y) != b.getPixel(x, y)) count++
+                }
+                return count
+            }
             await { onHost { it.views[true]?.findViewById<ViewFlipper>(id("balance_flipper")) != null && it.views[false]?.findViewById<TextClock>(id("clock_minute_text")) != null } }
             Thread.sleep(800)
             val initial = onHost { it.views[true]!!.findViewById<ViewFlipper>(id("balance_flipper")).displayedChild }
             await(1500) { onHost { it.views[true]!!.findViewById<ViewFlipper>(id("balance_flipper")).displayedChild != initial } }
-            val first = capture("mechanical-before", true)
+            capture("mechanical-before", true)
+            val firstHands = hands()
             Thread.sleep(1200)
-            val second = capture("mechanical-after", true)
-            assertFalse("System hands must move in the real host", first.sameAs(second))
+            capture("mechanical-after", true)
+            assertFalse("System hands must move independently of the balance flipper", firstHands.sameAs(hands()))
             capture("manila-idle", false)
             command("preview")
             await(8000) { onHost { it.views[false]?.findViewById<ImageView>(id("flip_overlay"))?.visibility == View.VISIBLE } }
@@ -62,10 +80,19 @@ class WidgetHostTest {
             val flip2 = capture("flip-middle", false)
             assertFalse("Perspective flip must produce changing host pixels", flip1.sameAs(flip2))
             await { onHost { it.views[false]?.findViewById<ImageView>(id("flip_overlay"))?.visibility == View.GONE } }
-            command("settings", "{\"moonScale\":1.5,\"calendarScale\":0.5,\"romanScale\":1}")
+            command("settings", "{}")
             Thread.sleep(800)
-            val resized = capture("mechanical-custom-sizes", true)
-            assertFalse("Component settings must change actual widget pixels", second.sameAs(resized))
+            val baseline = face()
+            assertEquals("Weather alpha must not leak into the next mechanical face", 255, Color.alpha(baseline.getPixel(baseline.width / 2, baseline.height / 2)))
+            for ((name, raw, region) in listOf(
+                Triple("moon", "{\"moonScale\":1.5}", intArrayOf(120, 50, 240, 140)),
+                Triple("calendar", "{\"calendarScale\":0.5}", intArrayOf(175, 140, 320, 220)),
+                Triple("roman", "{\"romanScale\":1.5}", intArrayOf(135, 25, 225, 70)),
+            )) {
+                command("settings", raw)
+                await { val next = face(); changed(baseline, next, region[0], region[1], region[2], region[3]) > 200 }
+                capture("mechanical-size-$name", true)
+            }
             command("stop")
             Thread.sleep(500)
             assertEquals(View.GONE, onHost { it.views[false]!!.findViewById<ImageView>(id("flip_overlay")).visibility })

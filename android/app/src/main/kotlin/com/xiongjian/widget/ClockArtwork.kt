@@ -16,6 +16,7 @@ object ClockArtwork {
 
     /** 此对象由 ClockTasks 单队列调用；输出不复用可变 Canvas，RemoteViews 不会持有下一帧的像素。 */
     fun mechanical(context: Context, settings: ClockSettings, now: Long): Bitmap {
+        resetPaint()
         val result = Bitmap.createBitmap(512, 512, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(result).apply { scale(512 / 360f, 512 / 360f) }
         val file = ClockStore.dial(context, settings)
@@ -69,6 +70,7 @@ object ClockArtwork {
 
     /** 保留参考中的透明玻璃底座，天气只读取真实缓存；不伪造摄取桌面壁纸的实时模糊。 */
     fun manila(context: Context, now: Long): Bitmap {
+        resetPaint()
         val result = Bitmap.createBitmap(540, 375, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(result).apply { scale(1.5f, 1.5f) }
         paint.shader = LinearGradient(0f, 16f, 360f, 230f, intArrayOf(0x65e8f0f4, 0x453c4852, 0x95313a43.toInt()), null, Shader.TileMode.CLAMP)
@@ -94,6 +96,7 @@ object ClockArtwork {
     }
 
     private fun weatherIcon(canvas: Canvas, code: Int, isDay: Boolean) {
+        paint.color = Color.WHITE
         canvas.save(); canvas.translate(124f, 160f); canvas.scale(1.12f, .94f)
         if (code < 3) {
             val x = if (code == 0) 50f else 65f; val y = if (code == 0) 40f else 27f
@@ -117,4 +120,7 @@ object ClockArtwork {
         paint.color = color; paint.textSize = size; paint.typeface = Typeface.create("sans-serif", if (bold) Typeface.BOLD else Typeface.NORMAL); paint.textAlign = align
         canvas.drawText(value, x, y - (paint.fontMetrics.ascent + paint.fontMetrics.descent) / 2, paint)
     }
+
+    /** Paint.color 同时携带 alpha，不能让天气归属文字的半透明状态污染下一张机械表。 */
+    private fun resetPaint() { paint.reset(); paint.isAntiAlias = true; paint.isFilterBitmap = true }
 }

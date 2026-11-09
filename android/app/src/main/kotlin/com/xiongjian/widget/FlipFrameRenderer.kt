@@ -20,6 +20,7 @@ object FlipFrameRenderer {
     private fun face(value: String): Bitmap {
         val result = Bitmap.createBitmap(284, 328, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(result).apply { scale(2f, 2f) }
+        paint.color = Color.WHITE
         paint.style = Paint.Style.FILL; paint.textAlign = Paint.Align.CENTER; paint.textScaleX = 1f
         paint.shader = LinearGradient(0f, 0f, 0f, 164f, intArrayOf(0xfff7f8f4.toInt(), 0xffdde1db.toInt(), 0xfffafbf7.toInt(), 0xffe8ece7.toInt()), floatArrayOf(0f, .498f, .502f, 1f), Shader.TileMode.CLAMP)
         canvas.drawRect(0f, 0f, 142f, 164f, paint); paint.shader = null

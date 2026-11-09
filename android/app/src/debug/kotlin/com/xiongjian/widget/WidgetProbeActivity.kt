@@ -16,7 +16,12 @@ class WidgetProbeActivity : Activity() {
             "settings" -> {
                 val raw = intent?.getStringExtra("settings")
                 val app = applicationContext
-                ClockTasks.execute { ClockStore.publish(app, raw, null); WidgetRenderer.updateAll(app) }
+                ClockTasks.execute {
+                    val resource = if (ClockSettings.parse(raw).romanScale > 1.1) R.raw.qa_large_dial else R.raw.qa_default_dial
+                    val png = app.resources.openRawResource(resource).use { it.readBytes() }
+                    ClockStore.publish(app, raw, png)
+                    WidgetRenderer.updateAll(app)
+                }
             }
         }
         Handler(Looper.getMainLooper()).postDelayed({ finish() }, 200)
