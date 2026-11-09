@@ -41,6 +41,9 @@ jobs:
           cache: gradle
           cache-dependency-path: 'android/**/*.gradle*'
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
       - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.44.4'
