@@ -1,0 +1,20 @@
+name: Android widget APK
+on:
+  push:
+    branches: [codex/android-clock-widgets]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.4'
+          channel: stable
+          cache: true
+      - run: flutter pub get --enforce-lockfile
+      - run: flutter test --no-pub test/android_widget_sync_test.dart --reporter expanded
